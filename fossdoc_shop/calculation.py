@@ -7,6 +7,7 @@ The text comes from a guest, so everything is validated and limited here before 
 
 import html
 import json
+import math
 
 import frappe
 
@@ -21,7 +22,7 @@ def _number(value, default=0.0, high=1e9):
 		number = float(value)
 	except (TypeError, ValueError):
 		return default
-	if number != number or number < 0:
+	if math.isnan(number) or number < 0:
 		return default
 	return min(number, high)
 
