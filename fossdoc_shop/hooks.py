@@ -1,0 +1,6 @@
+app_name = "fossdoc_shop"
+app_title = "FossDoc Shop"
+app_publisher = "FOSS-On-Line"
+app_description = "FossDoc shop: calculation e-mail, commercial offer PDF and orders"
+app_email = "foss@foss.ua"
+app_license = "gpl-3.0"
