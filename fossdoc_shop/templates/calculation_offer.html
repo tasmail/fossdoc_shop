@@ -1,32 +1,7 @@
 {% set calc = parse_calculation(doc.content) %}
 {% set about = describe(calc.lines | map(attribute="code") | list) if calc else {} %}
-<style>
-	.offer { font-family: Arial, Helvetica, sans-serif; color: #222; font-size: 12px; }
-	.offer .head { border-bottom: 3px solid #d9381e; padding-bottom: 10px; margin-bottom: 18px; }
-	.offer .brand { color: #d9381e; font-size: 22px; font-weight: bold; }
-	.offer h1 { font-size: 18px; margin: 0 0 4px; text-align: center; }
-	.offer h2 { font-size: 14px; margin: 22px 0 8px; }
-	.offer table.plain, .offer table.plain td { border: 0; padding: 0; width: auto; }
-	.offer td.tile { width: 54px; }
-	.offer td.tile div { background: #d9381e; color: #fff; font-size: 30px; font-weight: bold; width: 44px; height: 44px; line-height: 44px; text-align: center; border-radius: 8px; }
-	.offer td.tile + td { padding-left: 12px; }
-	.offer ul { margin: 0; padding-left: 18px; }
-	.offer li { margin-bottom: 4px; }
-	.offer table { width: 100%; border-collapse: collapse; }
-	.offer th { background: #fdeeea; text-align: left; padding: 6px 8px; border: 1px solid #f6c8bf; }
-	.offer td { padding: 6px 8px; border: 1px solid #eee; vertical-align: top; }
-	.offer td.sum { text-align: right; white-space: nowrap; }
-	.offer .about { color: #666; font-size: 11px; }
-	.offer .total td { font-weight: bold; font-size: 14px; background: #fdeeea; }
-	.offer .foot { margin-top: 28px; border-top: 1px solid #d9381e; padding-top: 8px; color: #666; font-size: 11px; }
-</style>
+{{ letter_head or "" }}
 <div class="offer">
-	<div class="head">
-		<table class="plain"><tr>
-			<td class="tile"><div>F</div></td>
-			<td><div class="brand">Підприємство «ФОСС-Он-Лайн»</div></td>
-		</tr></table>
-	</div>
 	<h1>Система електронного документообігу FossDoc<br>Комерційна пропозиція</h1>
 	<p class="about">Дата: {{ frappe.utils.formatdate(frappe.utils.nowdate(), "dd.MM.yyyy") }}</p>
 	{% if calc %}
@@ -58,7 +33,5 @@
 		<li>Історія та аудит роботи користувачів, статистика роботи з документом.</li>
 		<li>Web-сервер і підтримка тонкого клієнта, модульність, потокове сканування, штрих-кодування.</li>
 	</ul>
-	<div class="foot">
-		61002, м. Харків, вул. Дарвіна, 20, корп. 3 · тел. +38 057 714-12-28 · sales@foss.ua · https://fossdoc.com
-	</div>
 </div>
+{{ footer or "" }}
