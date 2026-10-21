@@ -5,6 +5,7 @@ by one line of JSON. Frappe turns the message into a Communication and the Notif
 The text comes from a guest, so everything is validated and limited here before a template shows it.
 """
 
+import html
 import json
 
 import frappe
@@ -29,7 +30,8 @@ def parse_calculation(content: str | None) -> dict | None:
 	"""Return the calculation of a message or None when the message is not a valid calculation."""
 	if not content:
 		return None
-	text = frappe.utils.strip_html_tags(content) if "<" in content else content
+	# the contact form escapes the markup of the message (quotes of the JSON too)
+	text = html.unescape(content)
 	head, _, body = text.strip().partition("\n")
 	if head.strip() != MARKER:
 		return None

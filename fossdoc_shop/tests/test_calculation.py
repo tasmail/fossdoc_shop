@@ -48,10 +48,10 @@ class TestParseCalculation(FrappeTestCase):
 		self.assertEqual(row["unit"], 0)
 		self.assertEqual(row["total"], 1e9)
 
-	def test_the_html_that_frappe_adds_around_the_message_is_removed(self):
-		calc = parse_calculation("<div>" + message().replace("\n", "<br>\n") + "</div>")
+	def test_the_message_as_the_contact_form_stores_it_is_read(self):
+		calc = parse_calculation(frappe.utils.escape_html(message(total=100)))
 
-		self.assertIsNotNone(calc)
+		self.assertEqual(calc["total"], 100)
 
 
 class TestDescribe(FrappeTestCase):
