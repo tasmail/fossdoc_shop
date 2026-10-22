@@ -163,6 +163,23 @@ class TestOneSourceOfLook(FrappeTestCase):
 			for what, pattern in patterns.items():
 				self.assertIsNone(re.search(pattern, text), f"{path.name} hardcodes {what}")
 
+	def test_the_button_of_the_letter_leads_to_the_cart_for_a_cart_and_to_the_calculator_for_a_calculation(
+		self,
+	):
+		seed_settings()
+		ensure_calculation_mail()
+		message = frappe.db.get_value("Notification", NOTIFICATION, "message")
+		for kind, url in (
+			("cart", "https://shop.test.example/basket"),
+			("calculator", "https://shop.test.example/calc"),
+		):
+			body = {"kind": kind, "lines": [{"code": "a", "name": "A", "qty": 1, "unit": 1, "total": 1}]}
+			doc = communication(MARKER + "\n" + json.dumps(body))
+
+			html = frappe.render_template(message, {"doc": doc})
+
+			self.assertIn(f'href="{url}"', html, kind)
+
 	def test_the_offer_and_the_letter_use_the_settings(self):
 		seed_settings()
 		ensure_calculation_mail()

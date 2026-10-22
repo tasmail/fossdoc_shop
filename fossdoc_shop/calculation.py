@@ -13,6 +13,7 @@ import frappe
 
 MARKER = "Розрахунок вартості FossDoc"
 LANGUAGES = ("uk", "ru")
+KINDS = ("calculator", "cart")  # where the calculation comes from: the calculator or the cart of the shop
 MAX_LINES = 120
 MAX_TEXT = 200
 
@@ -60,6 +61,7 @@ def parse_calculation(content: str | None) -> dict | None:
 	language = raw.get("lang") if raw.get("lang") in LANGUAGES else "uk"
 	return {
 		"lang": language,
+		"kind": raw.get("kind") if raw.get("kind") in KINDS else "calculator",
 		"lines": lines,
 		"total": _number(raw.get("total")),
 		"per_month": bool(raw.get("perMonth")),

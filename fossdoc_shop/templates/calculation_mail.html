@@ -21,7 +21,7 @@
 		</table>
 		<p style="margin:18px 0 6px;color:{{ b.muted }};font-size:12px">Вартість вказано в доларах США. Розрахунок орієнтовний: остаточна сума буде підтверджена в кошику.</p>
 		<p style="margin:24px 0;text-align:center">
-			<a href="{{ b.calculator_url }}" style="background:{{ b.primary }};color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;display:inline-block;margin:0 4px">Продовжити оформлення</a>
+			<a href="{{ b.cart_url if calc.kind == 'cart' else b.calculator_url }}" style="background:{{ b.primary }};color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;display:inline-block;margin:0 4px">Продовжити оформлення</a>
 			<a href="mailto:{{ b.email }}" style="background:#fff;color:{{ b.primary }};border:1px solid {{ b.primary }};text-decoration:none;padding:11px 24px;border-radius:6px;display:inline-block;margin:0 4px">Зв'яжіться з нами</a>
 		</p>
 		{% else %}
@@ -30,7 +30,7 @@
 		<p style="margin:0">З повагою,<br>{{ b.legal_name }}</p>
 	</div>
 	<div style="background:{{ b.footer }};color:#ddd;padding:14px 24px;font-size:12px">
-		<a href="{{ b.site }}" style="color:#fff;text-decoration:none">{{ b.company }}</a> &nbsp;·&nbsp; <a href="{{ b.calculator_url }}" style="color:#fff;text-decoration:none">Калькулятор вартості</a><br>
+		<a href="{{ b.site }}" style="color:#fff;text-decoration:none">{{ b.company }}</a> &nbsp;·&nbsp; <a href="{{ b.cart_url if calc.kind == 'cart' else b.calculator_url }}" style="color:#fff;text-decoration:none">Калькулятор вартості</a><br>
 		<span style="display:block;margin-top:6px">{{ b.address }} · {{ b.email }} · {{ b.phone }}</span>
 	</div>
 </div>
