@@ -15,3 +15,5 @@ jinja = {
 
 after_install = "fossdoc_shop.setup.ensure_calculation_mail"
 after_migrate = ["fossdoc_shop.setup.ensure_calculation_mail"]
+
+doc_events = {"Email Queue": {"before_insert": "fossdoc_shop.overrides.set_reply_to"}}

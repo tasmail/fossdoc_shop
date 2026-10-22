@@ -30,6 +30,7 @@ class TestMailEndToEnd(FrappeTestCase):
 			mailpit("/messages", "DELETE")
 		except OSError:
 			raise unittest.SkipTest("the mail catcher of the dev bench is not reachable")
+		frappe.db.delete("Email Queue")  # leftovers of other runs would be sent by the flush
 		self.use_the_mail_catcher()
 		frappe.flags.testing_email = True  # Frappe does not send mail in tests unless told to
 		self.addCleanup(setattr, frappe.flags, "testing_email", False)
@@ -84,6 +85,9 @@ class TestMailEndToEnd(FrappeTestCase):
 			self.assertEqual(item["To"][0]["Address"], "client@example.org")
 			self.assertEqual([c["Address"] for c in item["Cc"]], ["sales@foss.ua"])
 			self.assertEqual(item["Attachments"], 1)
+			# a reply goes to sales, not to the no-reply address that sends the letter
+			full = mailpit(f"/message/{item['ID']}")
+			self.assertEqual([r["Address"] for r in full["ReplyTo"]], ["sales@foss.ua"])
 		letters = messages
 		letter = mailpit(f"/message/{letters[0]['ID']}")
 		self.assertIn("Резолюції", letter["HTML"])
