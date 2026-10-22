@@ -11,6 +11,7 @@ from fossdoc_shop.setup import (
 	ensure_calculation_mail,
 	refresh_templates,
 )
+from fossdoc_shop.tests.seed import seed_settings
 
 
 def communication(content):
@@ -19,6 +20,7 @@ def communication(content):
 
 class TestCalculationMail(FrappeTestCase):
 	def setUp(self):
+		seed_settings()
 		ensure_calculation_mail()
 
 	def test_the_notification_is_created_once_and_a_migration_keeps_the_edits_of_a_manager(self):
@@ -44,7 +46,7 @@ class TestCalculationMail(FrappeTestCase):
 
 		refresh_templates()
 
-		self.assertIn("FossDoc", frappe.db.get_value("Notification", NOTIFICATION, "message"))
+		self.assertIn("parse_calculation", frappe.db.get_value("Notification", NOTIFICATION, "message"))
 		self.assertIn("Комерційна пропозиція", frappe.db.get_value("Print Format", PRINT_FORMAT, "html"))
 
 	def test_the_offer_has_a_letter_head_that_is_default_only_when_the_site_has_none(self):
@@ -90,6 +92,7 @@ class TestCalculationMail(FrappeTestCase):
 
 class TestOffer(FrappeTestCase):
 	def setUp(self):
+		seed_settings()
 		ensure_calculation_mail()
 		self.content = (
 			MARKER
@@ -139,18 +142,29 @@ class TestOffer(FrappeTestCase):
 
 
 class TestOneSourceOfLook(FrappeTestCase):
-	def test_the_templates_take_colours_and_requisites_from_the_brand_and_hardcode_none(self):
-		from fossdoc_shop.branding import COLORS, DEFAULTS
-		from fossdoc_shop.setup import TEMPLATES
+	def test_the_code_and_the_templates_hold_no_business_data_of_the_seller(self):
+		import re
+		from pathlib import Path
 
-		for name in ("calculation_mail.html", "letter_head_header.html", "letter_head_footer.html"):
-			text = (TEMPLATES / name).read_text(encoding="utf-8")
-			for color in COLORS.values():
-				self.assertNotIn(color, text, f"{name} hardcodes {color}")
-			for value in (DEFAULTS["phone"], DEFAULTS["email"], DEFAULTS["address"]):
-				self.assertNotIn(value, text, f"{name} hardcodes {value}")
+		root = Path(__file__).resolve().parent.parent
+		files = [
+			p for p in root.rglob("*") if p.suffix in {".py", ".html", ".css"} and "tests" not in p.parts
+		]
+		patterns = {
+			"an e-mail address": r"[\w.+-]+@[\w-]+\.[a-z]{2,}",
+			"a phone number": r"\+\d[\d ()-]{7,}",
+			"a colour": r"#[0-9a-fA-F]{6}\b",
+			"a site address": r"https?://(?!www\.w3\.org)[\w.-]+\.[a-z]{2,}",
+		}
+		for path in files:
+			if path.name in {"hooks.py"}:  # the publisher and the e-mail of the app itself
+				continue
+			text = path.read_text(encoding="utf-8")
+			for what, pattern in patterns.items():
+				self.assertIsNone(re.search(pattern, text), f"{path.name} hardcodes {what}")
 
-	def test_the_offer_and_the_letter_have_the_header_and_the_footer(self):
+	def test_the_offer_and_the_letter_use_the_settings(self):
+		seed_settings()
 		ensure_calculation_mail()
 		body = (
 			MARKER
@@ -161,6 +175,13 @@ class TestOneSourceOfLook(FrappeTestCase):
 		doc.name = "TEST-LOOK"
 
 		html = frappe.get_print("Communication", doc=doc, print_format=PRINT_FORMAT, as_pdf=False)
+		letter = frappe.render_template(
+			frappe.db.get_value("Notification", NOTIFICATION, "message"), {"doc": doc}
+		)
 
-		self.assertIn("Підприємство", html)
-		self.assertIn("sales@foss.ua", html)
+		self.assertIn("Test Seller Co", html)
+		self.assertIn("sales@test.example", html)
+		self.assertIn("#112233", html)
+		self.assertIn("https://shop.test.example/calc", letter)
+		self.assertIn("Test Legal LLC", letter)
+		self.assertIn("TestDoc", letter)

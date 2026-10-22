@@ -1,7 +1,7 @@
 {% set b = brand() %}
 {# Frappe cleans the styles of a letter head and drops `border`: the lines are thin blocks with a background. #}
 <table style="width:100%"><tr>
-	<td style="width:54px;padding:0 0 10px"><div style="background:{{ b.primary }};color:#fff;font:bold 30px Arial;width:44px;height:44px;line-height:44px;text-align:center;border-radius:8px">F</div></td>
-	<td style="padding:0 0 10px 12px;color:{{ b.primary }};font:bold 22px Arial">Підприємство «{{ b.company }}»</td>
+	<td style="width:54px;padding:0 0 10px"><div style="background:{{ b.primary }};color:#fff;font:bold 30px Arial;width:44px;height:44px;line-height:44px;text-align:center;border-radius:8px">{{ b.brand[:1] }}</div></td>
+	<td style="padding:0 0 10px 12px;color:{{ b.primary }};font:bold 22px Arial">{{ b.company }}</td>
 </tr></table>
 <div style="height:3px;background:{{ b.primary }};margin-bottom:18px"></div>

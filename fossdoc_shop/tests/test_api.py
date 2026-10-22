@@ -41,7 +41,7 @@ class TestSendCalculation(FrappeTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			send_calculation("client@example.org", "Hello")
 
-	def test_the_notification_copies_sales(self):
+	def test_the_notification_copies_the_address_of_the_settings(self):
 		from fossdoc_shop.setup import NOTIFICATION, ensure_calculation_mail
 
 		frappe.delete_doc("Notification", NOTIFICATION, force=True)
@@ -49,4 +49,4 @@ class TestSendCalculation(FrappeTestCase):
 		row = frappe.get_doc("Notification", NOTIFICATION).recipients[0]
 
 		self.assertEqual(row.receiver_by_document_field, "sender")
-		self.assertEqual(row.cc, "sales@foss.ua")
+		self.assertEqual(row.cc, "{{ brand().cc }}")  # read from the settings when the letter is sent

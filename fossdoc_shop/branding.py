@@ -1,63 +1,33 @@
 """The look and the requisites that the letter and the offer share.
 
-The colours are the palette of the site (`PRIMARY` is the red of the logo tile). The requisites come from the
-Company of the site and its Address when they exist, so a manager changes them in ERPNext; the defaults below
-are used until then.
+Nothing about the seller is written in the code: it all comes from the single DocType FossDoc Shop Settings, which
+the deploy of the site fills from its repository and a manager can change in the desk. An empty setting gives an
+empty string, never an invented value.
 """
 
 import frappe
 
-COLORS = {
-	"primary": "#d9381e",
-	"primary_dark": "#b32b14",
-	"tint": "#fdeeea",
-	"line": "#f6c8bf",
-	"text": "#222222",
-	"muted": "#666666",
-	"footer": "#555555",
-}
-
-DEFAULTS = {
-	"company": "ФОСС-Он-Лайн",
-	"address": "61002, м. Харків, вул. Дарвіна, 20, корп. 3",
-	"phone": "+38 057 714-12-28",
-	"email": "sales@foss.ua",
-	"site": "https://fossdoc.com",
-}
-
-
-def requisites() -> dict:
-	"""The requisites of the seller: the default Company of the site over the defaults of the app."""
-	data = dict(DEFAULTS)
-	company = frappe.db.get_single_value("Global Defaults", "default_company") or frappe.db.get_value(
-		"Company", {}, "name"
-	)
-	if not company:
-		return data
-	row = frappe.db.get_value(
-		"Company", company, ["company_name", "phone_no", "email", "website"], as_dict=True
-	)
-	for key, field in (
-		("company", "company_name"),
-		("phone", "phone_no"),
-		("email", "email"),
-		("site", "website"),
-	):
-		if row and row.get(field):
-			data[key] = row[field]
-	address = frappe.db.get_value(
-		"Dynamic Link",
-		{"link_doctype": "Company", "link_name": company, "parenttype": "Address"},
-		"parent",
-	)
-	if address:
-		line = frappe.db.get_value("Address", address, ["address_line1", "city", "pincode"], as_dict=True)
-		parts = [line.pincode, line.city, line.address_line1] if line else []
-		if any(parts):
-			data["address"] = ", ".join(str(part) for part in parts if part)
-	return data
+SETTINGS = "FossDoc Shop Settings"
+COLOR_FIELDS = ("primary", "tint", "line", "text", "muted", "footer")
 
 
 def brand() -> dict:
-	"""Colours and requisites for the templates (the Jinja method `fossdoc_brand`)."""
-	return {**COLORS, **requisites()}
+	"""Colours and requisites for the templates (the Jinja method `brand`)."""
+	settings = frappe.get_cached_doc(SETTINGS)
+	data = {name: settings.get(f"color_{name}") or "" for name in COLOR_FIELDS}
+	site = (settings.site_url or "").rstrip("/")
+	data.update(
+		{
+			"brand": settings.brand_name or "",
+			"company": settings.seller_name or "",
+			"legal_name": settings.legal_name or "",
+			"email": settings.sales_email or "",
+			"phone": settings.phone or "",
+			"address": settings.address or "",
+			"site": site,
+			"calculator_url": site + (settings.calculator_path or ""),
+			# the Cc of the letter (a Jinja template of the Notification reads it)
+			"cc": (settings.sales_email or "") if settings.copy_sales else "",
+		}
+	)
+	return data

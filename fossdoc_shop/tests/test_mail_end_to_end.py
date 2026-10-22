@@ -13,6 +13,7 @@ from frappe.tests.utils import FrappeTestCase
 from fossdoc_shop.api import send_calculation
 from fossdoc_shop.calculation import MARKER
 from fossdoc_shop.setup import NOTIFICATION, ensure_calculation_mail
+from fossdoc_shop.tests.seed import seed_settings
 
 MAILPIT = "http://mailpit:8025/api/v1"
 
@@ -30,6 +31,8 @@ class TestMailEndToEnd(FrappeTestCase):
 			mailpit("/messages", "DELETE")
 		except OSError:
 			raise unittest.SkipTest("the mail catcher of the dev bench is not reachable")
+		frappe.db.delete("Email Queue")  # leftovers of other runs would be sent by the flush
+		seed_settings()
 		self.use_the_mail_catcher()
 		frappe.flags.testing_email = True  # Frappe does not send mail in tests unless told to
 		self.addCleanup(setattr, frappe.flags, "testing_email", False)
@@ -82,8 +85,11 @@ class TestMailEndToEnd(FrappeTestCase):
 		self.assertEqual(len(messages), 2, [(m["To"][0]["Address"], m["Subject"]) for m in messages])
 		for item in messages:
 			self.assertEqual(item["To"][0]["Address"], "client@example.org")
-			self.assertEqual([c["Address"] for c in item["Cc"]], ["sales@foss.ua"])
+			self.assertEqual([c["Address"] for c in item["Cc"]], ["sales@test.example"])
 			self.assertEqual(item["Attachments"], 1)
+			# a reply goes to sales, not to the no-reply address that sends the letter
+			full = mailpit(f"/message/{item['ID']}")
+			self.assertEqual([r["Address"] for r in full["ReplyTo"]], ["sales@test.example"])
 		letters = messages
 		letter = mailpit(f"/message/{letters[0]['ID']}")
 		self.assertIn("Резолюції", letter["HTML"])
