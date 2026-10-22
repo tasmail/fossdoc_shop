@@ -22,13 +22,21 @@ class TestCalculationMail(FrappeTestCase):
 		ensure_calculation_mail()
 
 	def test_the_notification_is_created_once_and_a_migration_keeps_the_edits_of_a_manager(self):
-		frappe.db.set_value("Notification", NOTIFICATION, "message", "edited by a manager")
+		edited = "{# fossdoc_shop #}<p>edited by a manager</p>"
+		frappe.db.set_value("Notification", NOTIFICATION, "message", edited)
 
 		ensure_calculation_mail()
 		ensure_calculation_mail()
 
 		self.assertEqual(frappe.db.count("Notification", {"name": NOTIFICATION}), 1)
-		self.assertEqual(frappe.db.get_value("Notification", NOTIFICATION, "message"), "edited by a manager")
+		self.assertEqual(frappe.db.get_value("Notification", NOTIFICATION, "message"), edited)
+
+	def test_an_old_letter_without_the_mark_of_the_app_is_replaced_once(self):
+		frappe.db.set_value("Notification", NOTIFICATION, "message", "<p>made by the scripts of the site</p>")
+
+		ensure_calculation_mail()
+
+		self.assertIn("fossdoc_shop", frappe.db.get_value("Notification", NOTIFICATION, "message"))
 
 	def test_the_texts_of_the_app_are_put_back_only_on_purpose(self):
 		frappe.db.set_value("Notification", NOTIFICATION, "message", "edited by a manager")
