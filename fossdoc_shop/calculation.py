@@ -1,7 +1,7 @@
 """The calculation that the calculator of the site sends by e-mail.
 
 The page sends the contact form (`frappe.www.contact.send_message`); the message is the marker line followed
-by one line of JSON. Frappe turns the message into a Communication and the Notification of this app mails it.
+by one line of JSON (the lines in words for the manager follow it). Frappe turns the message into a Communication and the Notification of this app mails it.
 The text comes from a guest, so everything is validated and limited here before a template shows it.
 """
 
@@ -37,7 +37,7 @@ def parse_calculation(content: str | None) -> dict | None:
 	if head.strip() != MARKER:
 		return None
 	try:
-		raw = json.loads(body.strip())
+		raw = json.loads(body.strip().split("\n", 1)[0])
 	except ValueError:
 		return None
 	if not isinstance(raw, dict) or not isinstance(raw.get("lines"), list):

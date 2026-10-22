@@ -16,6 +16,7 @@ TEMPLATES = Path(__file__).parent / "templates"
 NOTIFICATION = MARKER
 PRINT_FORMAT = "Комерційна пропозиція FossDoc"
 LETTER_HEAD = "FossDoc"
+MAIL_MARK = "fossdoc_shop"
 
 
 def read(name: str) -> str:
@@ -81,7 +82,11 @@ def ensure_calculation_mail(overwrite: bool = False):
 		"attach_print": 1,
 		"print_format": PRINT_FORMAT,
 	}
-	doc = _save("Notification", NOTIFICATION, values, overwrite)
+	# The Notification that the scripts of the site made before the app has no mark of the app: replace it once.
+	legacy = frappe.db.exists("Notification", NOTIFICATION) and MAIL_MARK not in (
+		frappe.db.get_value("Notification", NOTIFICATION, "message") or ""
+	)
+	doc = _save("Notification", NOTIFICATION, values, overwrite or bool(legacy))
 	if doc:
 		doc.append("recipients", {"receiver_by_document_field": "sender"})
 		doc.insert(ignore_permissions=True)

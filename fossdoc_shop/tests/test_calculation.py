@@ -48,6 +48,11 @@ class TestParseCalculation(FrappeTestCase):
 		self.assertEqual(row["unit"], 0)
 		self.assertEqual(row["total"], 1e9)
 
+	def test_the_lines_in_words_after_the_json_line_are_ignored(self):
+		calc = parse_calculation(message(total=100) + "\n\nРезолюції: 100.00\n\nРазом: 100.00")
+
+		self.assertEqual(calc["total"], 100)
+
 	def test_the_message_as_the_contact_form_stores_it_is_read(self):
 		calc = parse_calculation(frappe.utils.escape_html(message(total=100)))
 
