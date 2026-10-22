@@ -5,7 +5,13 @@ app_description = "FossDoc shop: calculation e-mail, commercial offer PDF and or
 app_email = "foss@foss.ua"
 app_license = "gpl-3.0"
 
-jinja = {"methods": ["fossdoc_shop.calculation.parse_calculation", "fossdoc_shop.calculation.describe"]}
+jinja = {
+	"methods": [
+		"fossdoc_shop.calculation.parse_calculation",
+		"fossdoc_shop.calculation.describe",
+		"fossdoc_shop.branding.brand",
+	]
+}
 
 after_install = "fossdoc_shop.setup.ensure_calculation_mail"
 after_migrate = ["fossdoc_shop.setup.ensure_calculation_mail"]
