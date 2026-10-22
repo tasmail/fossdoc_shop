@@ -4,7 +4,7 @@ import email
 from email import policy
 from email.utils import formataddr
 
-from fossdoc_shop.branding import requisites
+from fossdoc_shop.branding import brand
 from fossdoc_shop.calculation import MARKER
 
 
@@ -20,7 +20,9 @@ def set_reply_to(doc, method=None):
 	subject = str(message.get("Subject") or "")
 	if MARKER not in subject:
 		return
-	data = requisites()
+	data = brand()
+	if not data["email"]:
+		return
 	del message["Reply-To"]
 	message["Reply-To"] = formataddr((data["company"], data["email"]))
 	doc.message = message.as_string()

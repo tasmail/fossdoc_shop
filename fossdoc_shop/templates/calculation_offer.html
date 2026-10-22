@@ -1,8 +1,22 @@
 {% set calc = parse_calculation(doc.content) %}
+{% set b = brand() %}
 {% set about = describe(calc.lines | map(attribute="code") | list) if calc else {} %}
+<style>
+	.offer { font-family: Arial, Helvetica, sans-serif; color: {{ b.text }}; font-size: 12px; }
+	.offer h1 { font-size: 18px; margin: 0 0 4px; text-align: center; }
+	.offer h2 { font-size: 14px; margin: 22px 0 8px; }
+	.offer ul { margin: 0; padding-left: 18px; }
+	.offer li { margin-bottom: 4px; }
+	.offer table { width: 100%; border-collapse: collapse; }
+	.offer th { background: {{ b.tint }}; text-align: left; padding: 6px 8px; border: 1px solid {{ b.line }}; }
+	.offer td { padding: 6px 8px; border: 1px solid #eee; vertical-align: top; }
+	.offer td.sum { text-align: right; white-space: nowrap; }
+	.offer .about { color: {{ b.muted }}; font-size: 11px; }
+	.offer .total td { font-weight: bold; font-size: 14px; background: {{ b.tint }}; }
+</style>
 {{ letter_head or "" }}
 <div class="offer">
-	<h1>Система електронного документообігу FossDoc<br>Комерційна пропозиція</h1>
+	<h1>Система електронного документообігу {{ b.brand }}<br>Комерційна пропозиція</h1>
 	<p class="about">Дата: {{ frappe.utils.formatdate(frappe.utils.nowdate(), "dd.MM.yyyy") }}</p>
 	{% if calc %}
 	<h2>1. Вибрана конфігурація</h2>

@@ -3,6 +3,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from fossdoc_shop.calculation import MARKER
 from fossdoc_shop.overrides import set_reply_to
+from fossdoc_shop.tests.seed import seed_settings
 
 MIME = "From: ERP CRM <noreply@example.org>\nTo: a@example.org\nSubject: {subject}\nReply-To: noreply@example.org\n\nbody\n"
 
@@ -13,12 +14,13 @@ def queue(subject, doctype="Communication"):
 
 class TestSetReplyTo(FrappeTestCase):
 	def test_the_letter_with_a_calculation_gets_the_reply_to_of_sales(self):
+		seed_settings()
 		doc = queue(MARKER)
 
 		set_reply_to(doc)
 
 		self.assertIn("Reply-To:", doc.message)
-		self.assertIn("sales@foss.ua", doc.message)
+		self.assertIn("sales@test.example", doc.message)
 		self.assertNotIn("noreply@example.org\n\nbody", doc.message)
 
 	def test_other_mail_is_left_alone(self):

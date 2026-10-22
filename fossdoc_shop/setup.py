@@ -9,7 +9,6 @@ from pathlib import Path
 
 import frappe
 
-from fossdoc_shop.branding import COLORS, DEFAULTS
 from fossdoc_shop.calculation import MARKER
 
 TEMPLATES = Path(__file__).parent / "templates"
@@ -57,7 +56,6 @@ def ensure_print_format(overwrite: bool = False):
 		"custom_format": 1,
 		"print_format_type": "Jinja",
 		"html": read("calculation_offer.html"),
-		"css": read("calculation_offer.css").format(**COLORS),
 		"disabled": 0,
 		"standard": "No",
 	}
@@ -88,7 +86,7 @@ def ensure_calculation_mail(overwrite: bool = False):
 	)
 	doc = _save("Notification", NOTIFICATION, values, overwrite or bool(legacy))
 	if doc:
-		doc.append("recipients", {"receiver_by_document_field": "sender", "cc": DEFAULTS["email"]})
+		doc.append("recipients", {"receiver_by_document_field": "sender", "cc": "{{ brand().cc }}"})
 		doc.insert(ignore_permissions=True)
 
 

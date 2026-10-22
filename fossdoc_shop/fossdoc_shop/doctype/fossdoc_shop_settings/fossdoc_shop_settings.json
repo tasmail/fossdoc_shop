@@ -1,0 +1,145 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-22 00:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "fields": [
+  {
+   "fieldname": "seller_section",
+   "label": "Seller",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "brand_name",
+   "label": "Brand name",
+   "fieldtype": "Data",
+   "reqd": 1,
+   "description": "Shown in the header of the letter, for example FossDoc"
+  },
+  {
+   "fieldname": "seller_name",
+   "label": "Seller name",
+   "fieldtype": "Data",
+   "reqd": 1,
+   "description": "Shown in the header of the offer"
+  },
+  {
+   "fieldname": "legal_name",
+   "label": "Legal name",
+   "fieldtype": "Data",
+   "reqd": 1,
+   "description": "Signature of the letter"
+  },
+  {
+   "fieldname": "contacts_section",
+   "label": "Contacts",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "sales_email",
+   "label": "Sales e-mail",
+   "fieldtype": "Data",
+   "options": "Email",
+   "reqd": 1,
+   "description": "Reply-To of the letter, the mailto link and the footer"
+  },
+  {
+   "fieldname": "copy_sales",
+   "label": "Send a copy of every letter to sales",
+   "fieldtype": "Check",
+   "default": "1"
+  },
+  {
+   "fieldname": "phone",
+   "label": "Phone",
+   "fieldtype": "Data",
+   "reqd": 1
+  },
+  {
+   "fieldname": "address",
+   "label": "Address",
+   "fieldtype": "Small Text",
+   "reqd": 1
+  },
+  {
+   "fieldname": "site_url",
+   "label": "Site address",
+   "fieldtype": "Data",
+   "reqd": 1,
+   "description": "With the scheme, for example https://fossdoc.com"
+  },
+  {
+   "fieldname": "calculator_path",
+   "label": "Path of the calculator on the site",
+   "fieldtype": "Data",
+   "reqd": 1,
+   "description": "For example /individualcalculation"
+  },
+  {
+   "fieldname": "colors_section",
+   "label": "Colours of the letter and the offer",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "color_primary",
+   "label": "Primary",
+   "fieldtype": "Color",
+   "reqd": 1
+  },
+  {
+   "fieldname": "color_tint",
+   "label": "Tint (table head, totals)",
+   "fieldtype": "Color",
+   "reqd": 1
+  },
+  {
+   "fieldname": "color_line",
+   "label": "Line",
+   "fieldtype": "Color",
+   "reqd": 1
+  },
+  {
+   "fieldname": "color_text",
+   "label": "Text",
+   "fieldtype": "Color",
+   "reqd": 1
+  },
+  {
+   "fieldname": "color_muted",
+   "label": "Muted text",
+   "fieldtype": "Color",
+   "reqd": 1
+  },
+  {
+   "fieldname": "color_footer",
+   "label": "Footer background",
+   "fieldtype": "Color",
+   "reqd": 1
+  }
+ ],
+ "hide_toolbar": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-10-22 00:00:00",
+ "modified_by": "Administrator",
+ "module": "FossDoc Shop",
+ "name": "FossDoc Shop Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
