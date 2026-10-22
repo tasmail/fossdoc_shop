@@ -15,6 +15,7 @@ class TestBranding(FrappeTestCase):
 		self.assertEqual(data["email"], SETTINGS["sales_email"])
 		self.assertEqual(data["company"], SETTINGS["seller_name"])
 		self.assertEqual(data["calculator_url"], "https://shop.test.example/calc")
+		self.assertEqual(data["cart_url"], "https://shop.test.example/basket")
 		self.assertEqual(data["cc"], SETTINGS["sales_email"])
 
 	def test_a_change_of_a_setting_is_seen_at_once(self):

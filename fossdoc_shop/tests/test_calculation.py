@@ -23,6 +23,11 @@ class TestParseCalculation(FrappeTestCase):
 		self.assertTrue(calc["per_month"])
 		self.assertEqual(calc["lines"][0]["code"], "resolution")
 
+	def test_the_origin_of_a_calculation_is_the_calculator_unless_it_says_it_is_the_cart(self):
+		self.assertEqual(parse_calculation(message())["kind"], "calculator")
+		self.assertEqual(parse_calculation(message(kind="cart"))["kind"], "cart")
+		self.assertEqual(parse_calculation(message(kind="<script>"))["kind"], "calculator")
+
 	def test_a_message_without_the_marker_or_with_broken_json_is_not_a_calculation(self):
 		self.assertIsNone(parse_calculation("Hello"))
 		self.assertIsNone(parse_calculation(f"{MARKER}\n{{not json"))

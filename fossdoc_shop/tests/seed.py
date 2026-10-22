@@ -12,6 +12,7 @@ SETTINGS = {
 	"address": "1 Test Street, Testville",
 	"site_url": "https://shop.test.example",
 	"calculator_path": "/calc",
+	"cart_path": "/basket",
 	"color_primary": "#112233",
 	"color_tint": "#aabbcc",
 	"color_line": "#ccbbaa",

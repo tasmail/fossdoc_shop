@@ -78,6 +78,13 @@
    "description": "For example /individualcalculation"
   },
   {
+   "fieldname": "cart_path",
+   "label": "Path of the cart on the site",
+   "fieldtype": "Data",
+   "reqd": 1,
+   "description": "For example /cart"
+  },
+  {
    "fieldname": "colors_section",
    "label": "Colours of the letter and the offer",
    "fieldtype": "Section Break"
