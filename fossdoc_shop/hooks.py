@@ -17,3 +17,8 @@ after_install = "fossdoc_shop.setup.ensure_calculation_mail"
 after_migrate = ["fossdoc_shop.setup.ensure_calculation_mail"]
 
 doc_events = {"Email Queue": {"before_insert": "fossdoc_shop.overrides.set_reply_to"}}
+
+# The Download PDF button of the print page of the portal sends the word None: see overrides.download_pdf.
+override_whitelisted_methods = {
+	"frappe.utils.print_format.download_pdf": "fossdoc_shop.overrides.download_pdf"
+}
