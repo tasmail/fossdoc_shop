@@ -86,6 +86,9 @@ def make_payment_request(**args):
 	if not has_website_permission(order, "read", frappe.session.user):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 	user = frappe.session.user
+	# the card is charged for this customer: without it ERPNext takes the owner of the order, who is the
+	# administrator for a cart, and Stripe refuses "Administrator" as the e-mail of the payer
+	args.setdefault("recipient_id", user)
 	frappe.set_user("Administrator")
 	try:
 		return payment_request.make_payment_request(**args)

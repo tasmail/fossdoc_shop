@@ -105,13 +105,18 @@ class TestMakePaymentRequest(FrappeTestCase):
 	def test_the_customer_of_the_order_pays_it_and_the_endpoint_of_erpnext_runs_with_the_rights_it_needs(
 		self,
 	):
-		frappe.set_user("Administrator")
+		frappe.set_user("customer@example.org")
+		self.addCleanup(frappe.set_user, "Administrator")
 
 		done = self.run_it(True, dt="Sales Order", dn="SAL-1", submit_doc=1)
 
 		self.assertEqual(done.result, "PR")
-		done.original.assert_called_once_with(dt="Sales Order", dn="SAL-1", submit_doc=1)
+		# the payer is the customer and not the owner of the order (the administrator for a cart)
+		done.original.assert_called_once_with(
+			dt="Sales Order", dn="SAL-1", submit_doc=1, recipient_id="customer@example.org"
+		)
 		self.assertEqual(done.users, ["Administrator"])  # the rights of the endpoint of ERPNext
+		self.assertEqual(frappe.session.user, "customer@example.org")  # and the session is given back
 		done.rule.assert_called_once()
 
 	def test_somebody_else_cannot_pay_the_order_and_the_endpoint_is_not_called(self):
