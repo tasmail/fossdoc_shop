@@ -11,7 +11,6 @@ from fossdoc_shop.branding import brand
 from fossdoc_shop.calculation import MARKER
 from fossdoc_shop.payment import SUBJECT_MARK
 
-
 # The documents of the letters whose replies go to sales: a calculation (Communication) and a payment.
 LETTERS = ("Communication", "Payment Request")
 
