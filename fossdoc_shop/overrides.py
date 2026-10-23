@@ -11,6 +11,9 @@ from fossdoc_shop.branding import brand
 from fossdoc_shop.calculation import MARKER
 from fossdoc_shop.payment import SUBJECT_MARK
 
+# The documents of the letters whose replies go to sales: a calculation (Communication) and a payment.
+LETTERS = ("Communication", "Payment Request")
+
 
 def set_reply_to(doc, method=None):
 	"""A reply to the letter with a calculation goes to sales and not to the no-reply address that sends it.
@@ -18,7 +21,7 @@ def set_reply_to(doc, method=None):
 	The Notification of Frappe has no Reply-To, so the header of the queued message is set here. The letter is
 	found by its subject, which is the marker of the calculation.
 	"""
-	if doc.reference_doctype != "Communication" or not doc.message:
+	if doc.reference_doctype not in LETTERS or not doc.message:
 		return
 	message = email.message_from_string(doc.message, policy=policy.SMTP)
 	subject = str(message.get("Subject") or "")
