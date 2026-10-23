@@ -190,7 +190,7 @@ class TestSendPaymentLetter(FrappeTestCase):
 	def test_the_reply_to_of_the_letter_is_sales(self):
 		seed_settings()
 		doc = frappe._dict(
-			reference_doctype="Communication",
+			reference_doctype="Payment Request",  # the reference of a payment letter (the first test used Communication)
 			message=f"From: a@example.org\nTo: b@example.org\nSubject: {SUBJECT_MARK} SAL-1 отримано\nReply-To: noreply@example.org\n\nbody\n",
 		)
 
