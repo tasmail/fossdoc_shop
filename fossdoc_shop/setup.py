@@ -10,11 +10,14 @@ from pathlib import Path
 import frappe
 
 from fossdoc_shop.calculation import MARKER
+from fossdoc_shop.payment import SUBJECT_MARK
 
 TEMPLATES = Path(__file__).parent / "templates"
 NOTIFICATION = MARKER
 PRINT_FORMAT = "Комерційна пропозиція FossDoc"
 LETTER_HEAD = "FossDoc"
+PAYMENT_PRINT_FORMAT = "Підтвердження оплати FossDoc"
+PAYMENT_NOTIFICATION = f"{SUBJECT_MARK} отримано"
 MAIL_MARK = "fossdoc_shop"
 
 
@@ -90,6 +93,42 @@ def ensure_calculation_mail(overwrite: bool = False):
 		doc.insert(ignore_permissions=True)
 
 
+def ensure_payment_mail(overwrite: bool = False):
+	"""The letter that a customer gets when an order is paid (with the PDF of the confirmation).
+
+	The event is Custom: the Payment Request of the shop sends it itself when it books the payment.
+	"""
+	ensure_letter_head(overwrite)
+	pdf = {
+		"doc_type": "Payment Request",
+		"module": "FossDoc Shop",
+		"custom_format": 1,
+		"print_format_type": "Jinja",
+		"html": read("payment_receipt.html"),
+		"disabled": 0,
+		"standard": "No",
+	}
+	doc = _save("Print Format", PAYMENT_PRINT_FORMAT, pdf, overwrite)
+	if doc:
+		doc.insert(ignore_permissions=True)
+	values = {
+		"subject": SUBJECT_MARK + " {{ doc.reference_name }} отримано",
+		"document_type": "Payment Request",
+		"event": "Custom",
+		"channel": "Email",
+		"enabled": 1,
+		"message_type": "HTML",
+		"message": read("payment_mail.html"),
+		"attach_print": 1,
+		"print_format": PAYMENT_PRINT_FORMAT,
+	}
+	doc = _save("Notification", PAYMENT_NOTIFICATION, values, overwrite)
+	if doc:
+		doc.append("recipients", {"receiver_by_document_field": "email_to", "cc": "{{ brand().cc }}"})
+		doc.insert(ignore_permissions=True)
+
+
 def refresh_templates():
 	"""Replace the letter, the offer and the letter head with the texts of the app (`bench execute`)."""
 	ensure_calculation_mail(overwrite=True)
+	ensure_payment_mail(overwrite=True)

@@ -1,0 +1,41 @@
+{% set order = payment_order(doc) %}
+{% set b = brand() %}
+<style>
+	.receipt { font-family: Arial, Helvetica, sans-serif; color: {{ b.text }}; font-size: 12px; }
+	.receipt h1 { font-size: 18px; margin: 0 0 4px; text-align: center; }
+	.receipt .stamp { display: inline-block; border: 2px solid {{ b.primary }}; color: {{ b.primary }}; padding: 2px 10px; font-weight: bold; letter-spacing: 1px; }
+	.receipt table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+	.receipt th { background: {{ b.tint }}; text-align: left; padding: 6px 8px; border: 1px solid {{ b.line }}; }
+	.receipt td { padding: 6px 8px; border: 1px solid #eee; vertical-align: top; }
+	.receipt td.sum { text-align: right; white-space: nowrap; }
+	.receipt .total td { font-weight: bold; font-size: 14px; background: {{ b.tint }}; }
+	.receipt .about { color: {{ b.muted }}; font-size: 11px; }
+	.receipt .payer { margin-top: 14px; }
+</style>
+{{ letter_head or "" }}
+<div class="receipt">
+	<h1>Підтвердження оплати</h1>
+	{% if order %}
+	<p style="text-align:center"><span class="stamp">СПЛАЧЕНО</span></p>
+	<p class="about" style="text-align:center">Замовлення {{ order.name }} від {{ frappe.utils.formatdate(order.date, "dd.MM.yyyy") }} · оплата {{ frappe.utils.formatdate(order.paid_on, "dd.MM.yyyy") }}{% if order.gateway %} · {{ order.gateway }}{% endif %}</p>
+	<div class="payer">
+		<b>Платник:</b> {{ (order.customer or "")|e }}<br>
+		{% for line in order.address %}{{ line|e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+	</div>
+	<table>
+		<tr><th>Найменування</th><th>Кількість</th><th>Ціна, {{ order.currency }}</th><th>Сума, {{ order.currency }}</th></tr>
+		{% for row in order["items"] %}
+		<tr>
+			<td>{{ row.name|e }}</td>
+			<td class="sum">{{ "%.0f"|format(row.qty or 0) }}</td>
+			<td class="sum">{{ "%.2f"|format(row.rate or 0) }}</td>
+			<td class="sum">{{ "%.2f"|format(row.amount or 0) }}</td>
+		</tr>
+		{% endfor %}
+		<tr class="total"><td colspan="3">Сплачено</td><td class="sum">{{ order.currency }} {{ "%.2f"|format(order.paid or order.total or 0) }}</td></tr>
+	</table>
+	{% else %}
+	<p>Оплату отримано.</p>
+	{% endif %}
+</div>
+{{ footer or "" }}

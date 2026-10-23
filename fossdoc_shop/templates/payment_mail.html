@@ -1,0 +1,35 @@
+{# fossdoc_shop: the letter of a paid order #}
+{% set order = payment_order(doc) %}
+{% set b = brand() %}
+<div style="font-family:Arial,Helvetica,sans-serif;color:{{ b.text }};max-width:640px;margin:0 auto">
+	<div style="background:{{ b.primary }};color:#fff;padding:18px 24px;font-size:20px;font-weight:bold">{{ b.brand }} <span style="font-weight:normal;font-size:13px;opacity:.85">· оплату отримано</span></div>
+	<div style="padding:24px;border:1px solid #eee;border-top:0">
+		{% if order %}
+		<p style="margin:0 0 12px;font-size:16px"><b>Дякуємо за оплату, {{ (order.customer or doc.email_to)|e }}.</b></p>
+		<p style="margin:0 0 18px">Ми отримали оплату замовлення <b>{{ order.name }}</b> від {{ frappe.utils.formatdate(order.date, "dd.MM.yyyy") }}. Підтвердження оплати у вкладенні (PDF).</p>
+		<table style="width:100%;border-collapse:collapse;font-size:14px">
+			{% for row in order["items"] %}
+			<tr>
+				<td style="padding:8px 0;border-bottom:1px solid #eee">{{ row.name|e }}{% if row.qty and row.qty > 1 %} ({{ "%.0f"|format(row.qty) }} × {{ "%.2f"|format(row.rate or 0) }}){% endif %}</td>
+				<td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;white-space:nowrap">{{ order.currency }} {{ "%.2f"|format(row.amount or 0) }}</td>
+			</tr>
+			{% endfor %}
+			<tr>
+				<td style="padding:12px 0;font-weight:bold">Сплачено{% if order.gateway %} ({{ order.gateway }}){% endif %}</td>
+				<td style="padding:12px 0;font-weight:bold;text-align:right;white-space:nowrap">{{ order.currency }} {{ "%.2f"|format(order.paid or order.total or 0) }}</td>
+			</tr>
+		</table>
+		<p style="margin:24px 0;text-align:center">
+			<a href="{{ b.orders_url }}/{{ order.name }}" style="background:{{ b.primary }};color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;display:inline-block;margin:0 4px">Переглянути замовлення</a>
+			<a href="mailto:{{ b.email }}" style="background:#fff;color:{{ b.primary }};border:1px solid {{ b.primary }};text-decoration:none;padding:11px 24px;border-radius:6px;display:inline-block;margin:0 4px">Зв'яжіться з нами</a>
+		</p>
+		{% else %}
+		<p>Оплату отримано. Якщо виникнуть питання, відповідайте на цей лист.</p>
+		{% endif %}
+		<p style="margin:0">З повагою,<br>{{ b.legal_name }}</p>
+	</div>
+	<div style="background:{{ b.footer }};color:#ddd;padding:14px 24px;font-size:12px">
+		<a href="{{ b.site }}" style="color:#fff;text-decoration:none">{{ b.company }}</a><br>
+		<span style="display:block;margin-top:6px">{{ b.address }} · {{ b.email }} · {{ b.phone }}</span>
+	</div>
+</div>

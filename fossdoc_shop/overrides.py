@@ -9,6 +9,7 @@ from frappe import _
 
 from fossdoc_shop.branding import brand
 from fossdoc_shop.calculation import MARKER
+from fossdoc_shop.payment import SUBJECT_MARK
 
 
 def set_reply_to(doc, method=None):
@@ -21,7 +22,7 @@ def set_reply_to(doc, method=None):
 		return
 	message = email.message_from_string(doc.message, policy=policy.SMTP)
 	subject = str(message.get("Subject") or "")
-	if MARKER not in subject:
+	if MARKER not in subject and SUBJECT_MARK not in subject:
 		return
 	data = brand()
 	if not data["email"]:
@@ -115,6 +116,20 @@ class PaymentRequest(_payment_request_class()):
 		user = frappe.session.user
 		frappe.set_user("Administrator")
 		try:
-			return super().set_as_paid()
+			result = super().set_as_paid()
+			send_payment_letter(self)
+			return result
 		finally:
 			frappe.set_user(user)
+
+
+def send_payment_letter(request):
+	"""Mail the confirmation of a paid order; a failure of the letter never undoes the payment."""
+	if request.get("reference_doctype") != "Sales Order" or not request.get("email_to"):
+		return
+	from fossdoc_shop.setup import PAYMENT_NOTIFICATION
+
+	try:
+		frappe.get_doc("Notification", PAYMENT_NOTIFICATION).send(request)
+	except Exception:  # noqa: BLE001 - whatever goes wrong with a letter, the payment stays booked
+		frappe.log_error(title="The letter of the payment was not sent")
