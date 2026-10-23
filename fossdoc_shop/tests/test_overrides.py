@@ -141,3 +141,53 @@ class TestMakePaymentRequest(FrappeTestCase):
 			],
 			"fossdoc_shop.overrides.make_payment_request",
 		)
+
+
+class TestPaymentRequestClass(FrappeTestCase):
+	def test_the_class_of_the_shop_replaces_the_one_of_webshop_in_the_hooks(self):
+		from webshop.webshop.doctype.override_doctype.payment_request import PaymentRequest as Webshop
+
+		from fossdoc_shop import hooks
+		from fossdoc_shop.overrides import PaymentRequest
+
+		self.assertTrue(issubclass(PaymentRequest, Webshop))
+		self.assertEqual(
+			hooks.override_doctype_class["Payment Request"], "fossdoc_shop.overrides.PaymentRequest"
+		)
+		self.assertIn(
+			"fossdoc_shop.overrides.PaymentRequest",
+			frappe.get_hooks("override_doctype_class")["Payment Request"],
+		)
+		# the last app wins, so the shop has to be installed after Webshop: it says so
+		self.assertIn("webshop", hooks.required_apps)
+
+	def test_the_payment_is_booked_by_the_administrator_and_the_session_is_given_back(self):
+		from fossdoc_shop.overrides import PaymentRequest
+
+		users = []
+		request = PaymentRequest.__new__(PaymentRequest)
+		frappe.set_user("customer@example.org")
+		self.addCleanup(frappe.set_user, "Administrator")
+
+		with patch.object(
+			PaymentRequest.__mro__[1], "set_as_paid", lambda self: users.append(frappe.session.user) or "paid"
+		):
+			result = request.set_as_paid()
+
+		self.assertEqual((result, users), ("paid", ["Administrator"]))
+		self.assertEqual(frappe.session.user, "customer@example.org")
+
+	def test_the_session_is_given_back_when_the_booking_fails(self):
+		from fossdoc_shop.overrides import PaymentRequest
+
+		def fail(self):
+			raise ValueError("no")
+
+		request = PaymentRequest.__new__(PaymentRequest)
+		frappe.set_user("customer@example.org")
+		self.addCleanup(frappe.set_user, "Administrator")
+
+		with patch.object(PaymentRequest.__mro__[1], "set_as_paid", fail), self.assertRaises(ValueError):
+			request.set_as_paid()
+
+		self.assertEqual(frappe.session.user, "customer@example.org")

@@ -94,3 +94,27 @@ def make_payment_request(**args):
 		return payment_request.make_payment_request(**args)
 	finally:
 		frappe.set_user(user)
+
+
+def _payment_request_class():
+	"""The class that the shop uses for a Payment Request (Webshop already replaces the one of ERPNext)."""
+	from webshop.webshop.doctype.override_doctype.payment_request import PaymentRequest
+
+	return PaymentRequest
+
+
+class PaymentRequest(_payment_request_class()):
+	"""A Payment Request whose payment is booked by the administrator.
+
+	After a charge on Stripe the customer is the user of the session, and booking the payment (the Payment Entry)
+	needs rights that a portal user does not have: the page ended with a message that the user may not select or
+	read an account. ERPNext handles the guest in the same way (it books the payment as the administrator).
+	"""
+
+	def set_as_paid(self):
+		user = frappe.session.user
+		frappe.set_user("Administrator")
+		try:
+			return super().set_as_paid()
+		finally:
+			frappe.set_user(user)
