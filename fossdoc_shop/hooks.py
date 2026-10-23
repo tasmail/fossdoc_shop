@@ -21,5 +21,8 @@ doc_events = {"Email Queue": {"before_insert": "fossdoc_shop.overrides.set_reply
 # The Download PDF button of the print page sends the word None and the Pay button of an order is refused to a
 # customer: see overrides.download_pdf and overrides.make_payment_request.
 override_whitelisted_methods = {
-	"frappe.utils.print_format.download_pdf": "fossdoc_shop.overrides.download_pdf"
+	"frappe.utils.print_format.download_pdf": "fossdoc_shop.overrides.download_pdf",
+	"erpnext.accounts.doctype.payment_request.payment_request.make_payment_request": (
+		"fossdoc_shop.overrides.make_payment_request"
+	),
 }

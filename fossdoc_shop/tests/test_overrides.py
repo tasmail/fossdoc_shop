@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import frappe
@@ -83,10 +84,10 @@ class TestDownloadPdf(FrappeTestCase):
 
 class TestMakePaymentRequest(FrappeTestCase):
 	def run_it(self, allowed, **args):
-		"""Call the override with the endpoint of ERPNext and the rule of the portal replaced; returns the doubles."""
-		order = MagicMock()
+		"""Call the override with the endpoint of ERPNext and the rule of the portal replaced by doubles."""
+		users = []
 		with (
-			patch("frappe.get_doc", return_value=order) as get_doc,
+			patch("frappe.get_doc", return_value=MagicMock()),
 			patch(
 				"erpnext.controllers.website_list_for_contact.has_website_permission", return_value=allowed
 			) as rule,
@@ -94,40 +95,37 @@ class TestMakePaymentRequest(FrappeTestCase):
 				"erpnext.accounts.doctype.payment_request.payment_request.make_payment_request"
 			) as original,
 		):
-			users = []
 			original.side_effect = lambda **kw: users.append(frappe.session.user) or "PR"
 			try:
 				result = make_payment_request(**args)
 			except frappe.PermissionError:
 				result = "refused"
-		return result, original, rule, get_doc, users
+		return SimpleNamespace(result=result, original=original, rule=rule, users=users)
 
 	def test_the_customer_of_the_order_pays_it_and_the_endpoint_of_erpnext_runs_with_the_rights_it_needs(
 		self,
 	):
 		frappe.set_user("Administrator")
-		with patch.object(frappe.local.session, "user", "customer@example.org"):
-			result, original, rule, get_doc, users = self.run_it(
-				True, dt="Sales Order", dn="SAL-1", submit_doc=1
-			)
 
-		self.assertEqual(result, "PR")
-		original.assert_called_once_with(dt="Sales Order", dn="SAL-1", submit_doc=1)
-		self.assertEqual(users, ["Administrator"])  # the rights of the endpoint of ERPNext
-		rule.assert_called_once()
+		done = self.run_it(True, dt="Sales Order", dn="SAL-1", submit_doc=1)
+
+		self.assertEqual(done.result, "PR")
+		done.original.assert_called_once_with(dt="Sales Order", dn="SAL-1", submit_doc=1)
+		self.assertEqual(done.users, ["Administrator"])  # the rights of the endpoint of ERPNext
+		done.rule.assert_called_once()
 
 	def test_somebody_else_cannot_pay_the_order_and_the_endpoint_is_not_called(self):
-		result, original, rule, get_doc, users = self.run_it(False, dt="Sales Order", dn="SAL-1")
+		done = self.run_it(False, dt="Sales Order", dn="SAL-1")
 
-		self.assertEqual(result, "refused")
-		original.assert_not_called()
+		self.assertEqual(done.result, "refused")
+		done.original.assert_not_called()
 
 	def test_other_documents_go_to_the_endpoint_of_erpnext_as_they_are(self):
-		result, original, rule, get_doc, users = self.run_it(False, dt="Sales Invoice", dn="SINV-1")
+		done = self.run_it(False, dt="Sales Invoice", dn="SINV-1")
 
-		self.assertEqual(result, "PR")
-		original.assert_called_once_with(dt="Sales Invoice", dn="SINV-1")
-		rule.assert_not_called()
+		self.assertEqual(done.result, "PR")
+		done.original.assert_called_once_with(dt="Sales Invoice", dn="SINV-1")
+		done.rule.assert_not_called()
 
 	def test_the_hook_points_at_the_override(self):
 		from fossdoc_shop import hooks
