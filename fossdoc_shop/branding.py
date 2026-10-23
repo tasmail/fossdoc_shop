@@ -27,6 +27,7 @@ def brand() -> dict:
 			"site": site,
 			"calculator_url": site + (settings.calculator_path or ""),
 			"cart_url": site + (settings.cart_path or ""),
+			"orders_url": site + "/orders",
 			# the Cc of the letter (a Jinja template of the Notification reads it)
 			"cc": (settings.sales_email or "") if settings.copy_sales else "",
 		}

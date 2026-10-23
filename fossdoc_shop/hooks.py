@@ -12,11 +12,12 @@ jinja = {
 		"fossdoc_shop.calculation.parse_calculation",
 		"fossdoc_shop.calculation.describe",
 		"fossdoc_shop.branding.brand",
+		"fossdoc_shop.payment.payment_order",
 	]
 }
 
-after_install = "fossdoc_shop.setup.ensure_calculation_mail"
-after_migrate = ["fossdoc_shop.setup.ensure_calculation_mail"]
+after_install = ["fossdoc_shop.setup.ensure_calculation_mail", "fossdoc_shop.setup.ensure_payment_mail"]
+after_migrate = ["fossdoc_shop.setup.ensure_calculation_mail", "fossdoc_shop.setup.ensure_payment_mail"]
 
 doc_events = {"Email Queue": {"before_insert": "fossdoc_shop.overrides.set_reply_to"}}
 
