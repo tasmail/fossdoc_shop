@@ -5,6 +5,7 @@ from email import policy
 from email.utils import formataddr
 
 import frappe
+from frappe import _
 
 from fossdoc_shop.branding import brand
 from fossdoc_shop.calculation import MARKER
@@ -63,3 +64,30 @@ def download_pdf(
 		letterhead=_clean(letterhead),
 		pdf_generator=_clean(pdf_generator),
 	)
+
+
+@frappe.whitelist()
+def make_payment_request(**args):
+	"""Let the customer of a sales order pay it: the Pay button of the order page of the portal.
+
+	ERPNext checks that the user may create a Payment Request and read the sales order, and no role of a portal
+	user has those rights (the portal pages are opened by the link of the user to the customer, not by a role),
+	so the button ends with Not permitted. For a sales order the call is allowed to the user whose customer owns
+	the order (the rule of the portal pages) and runs as the administrator for the time of the call; for any
+	other document the endpoint of ERPNext is called as it is.
+	"""
+	from erpnext.accounts.doctype.payment_request import payment_request
+	from erpnext.controllers.website_list_for_contact import has_website_permission
+
+	if args.get("dt") != "Sales Order" or not isinstance(args.get("dn"), str):
+		return payment_request.make_payment_request(**args)
+
+	order = frappe.get_doc("Sales Order", args["dn"])
+	if not has_website_permission(order, "read", frappe.session.user):
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+	user = frappe.session.user
+	frappe.set_user("Administrator")
+	try:
+		return payment_request.make_payment_request(**args)
+	finally:
+		frappe.set_user(user)
