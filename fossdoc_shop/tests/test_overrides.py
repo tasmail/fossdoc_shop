@@ -193,26 +193,26 @@ class TestPaymentRequestClass(FrappeTestCase):
 		self.assertEqual(frappe.session.user, "customer@example.org")
 
 
-class TestCustomerContactRetry(FrappeTestCase):
-	def test_a_stale_contact_while_linking_the_portal_users_is_retried_once_with_a_fresh_read(self):
+class TestCustomerContactConflict(FrappeTestCase):
+	def test_a_conflict_while_linking_the_portal_users_is_logged_and_does_not_end_the_request(self):
 		from unittest.mock import patch
 
 		from erpnext.selling.doctype.customer.customer import Customer as ErpnextCustomer
 
 		from fossdoc_shop import overrides
 
-		customer = overrides.Customer({"doctype": "Customer", "customer_name": "Retry Test"})
+		customer = overrides.Customer({"doctype": "Customer", "customer_name": "Conflict Test"})
 
 		with (
 			patch.object(ErpnextCustomer, "on_update", side_effect=frappe.TimestampMismatchError),
-			patch.object(overrides, "link_portal_users_to_contacts") as link,
+			patch.object(frappe, "log_error") as log,
 		):
 			customer.on_update()
 
-		link.assert_called_once_with(customer)
+		log.assert_called_once()
 
 	def test_the_class_of_the_customer_is_the_one_of_the_app(self):
-		self.assertIs(
-			frappe.get_doc({"doctype": "Customer", "customer_name": "Class Test"}).__class__,
-			__import__("fossdoc_shop.overrides", fromlist=["Customer"]).Customer,
-		)
+		from fossdoc_shop import overrides
+
+		doc = frappe.get_doc({"doctype": "Customer", "customer_name": "Class Test"})
+		self.assertIs(doc.__class__, overrides.Customer)

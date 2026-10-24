@@ -5,7 +5,6 @@ from email import policy
 from email.utils import formataddr
 
 import frappe
-from erpnext.controllers.website_list_for_contact import link_portal_users_to_contacts
 from frappe import _
 
 from fossdoc_shop.branding import brand
@@ -134,12 +133,13 @@ class PaymentRequest(_payment_request_class()):
 
 
 class Customer(_customer_class()):
-	"""A Customer whose link to the contacts of its portal users is tried again when the Contact has just changed.
+	"""A Customer whose last step, the link to the contacts of its portal users, never ends the request in an error.
 
-	A new customer who sets the password of the account sees "Document has been modified after you have opened
-	it" and the page ends with an error: the last step of `on_update` saves the Contact of the user, which was
-	changed a moment earlier in the same request. The step reads the Contact again and adds a link only when it
-	is missing, so a second try is safe.
+	A new customer who sets the password of the account saw "Document has been modified after you have opened
+	it": the step saves the Contact of the user, and another writer changed that Contact in the same moment, so
+	reading it again does not help (reproduced on staging, the second try failed in the same way). The contact
+	of a new customer is linked to the Customer when the Customer is created, so the step only adds links that
+	are missing; a conflict here is logged and skipped, and the customer goes on.
 	"""
 
 	def on_update(self):
@@ -147,7 +147,12 @@ class Customer(_customer_class()):
 			super().on_update()
 		except frappe.TimestampMismatchError:
 			frappe.clear_last_message()
-			link_portal_users_to_contacts(self)
+			frappe.log_error(
+				title="Customer: the contacts of the portal users were not linked",
+				message=frappe.get_traceback(),
+				reference_doctype="Customer",
+				reference_name=self.name,
+			)
 
 
 def send_payment_letter(request):
