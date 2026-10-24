@@ -67,6 +67,21 @@ def ensure_print_format(overwrite: bool = False):
 		doc.insert(ignore_permissions=True)
 
 
+def ensure_downloads_group():
+	"""The Item Group of the releases for download (the installers are attached to its Items)."""
+	from fossdoc_shop.downloads import GROUP
+
+	if not frappe.db.exists("Item Group", GROUP):
+		frappe.get_doc(
+			{
+				"doctype": "Item Group",
+				"item_group_name": GROUP,
+				"parent_item_group": "All Item Groups",
+				"is_group": 0,
+			}
+		).insert(ignore_permissions=True)
+
+
 def ensure_calculation_mail(overwrite: bool = False):
 	"""The Notification that mails a calculation to the visitor (the PDF offer is attached)."""
 	ensure_letter_head(overwrite)

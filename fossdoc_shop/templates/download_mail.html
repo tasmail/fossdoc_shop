@@ -1,0 +1,22 @@
+{# fossdoc_shop: the letter with the links to the demo version #}
+<div style="font-family:Arial,Helvetica,sans-serif;color:{{ b.text }};max-width:640px;margin:0 auto">
+	<div style="background:{{ b.primary }};color:#fff;padding:18px 24px;font-size:20px;font-weight:bold">{{ b.brand }} <span style="font-weight:normal;font-size:13px;opacity:.85">· демо-версія {{ version }}</span></div>
+	<div style="padding:24px;border:1px solid #eee;border-top:0">
+		<p style="margin:0 0 12px;font-size:16px"><b>Вітаємо, {{ name|e }}!</b></p>
+		<p style="margin:0 0 18px">Дякуємо за інтерес до {{ b.brand }}. Нижче посилання для завантаження демонстраційної версії {{ version }}. Посилання діють {{ hours }} год. з моменту цього листа.</p>
+		<table style="width:100%;border-collapse:collapse;font-size:14px">
+			{% for row in links %}
+			<tr>
+				<td style="padding:10px 0;border-bottom:1px solid #eee">{{ row.name|e }} <span style="color:{{ b.muted }}">({{ row.size }})</span></td>
+				<td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right"><a href="{{ row.url }}" style="background:{{ b.primary }};color:#fff;text-decoration:none;padding:8px 18px;border-radius:6px;display:inline-block">Завантажити</a></td>
+			</tr>
+			{% endfor %}
+		</table>
+		<p style="margin:18px 0 0">Перед встановленням рекомендуємо ознайомитися з розділом «Інсталяція системи» та статтею «Швидкий старт» у документації. Якщо посилання не спрацювало, відповідайте на цей лист і ми надішлемо нове.</p>
+		<p style="margin:24px 0 0">З повагою,<br>{{ b.legal_name }}</p>
+	</div>
+	<div style="background:{{ b.footer }};color:#ddd;padding:14px 24px;font-size:12px">
+		<a href="{{ b.site }}" style="color:#fff;text-decoration:none">{{ b.company }}</a><br>
+		<span style="display:block;margin-top:6px">{{ b.address }} · {{ b.email }} · {{ b.phone }}</span>
+	</div>
+</div>
