@@ -150,23 +150,35 @@ def _b64(value: bytes) -> str:
 	return base64.b64encode(value).decode()
 
 
-def _number(xml: etree._Element, name: str) -> int:
-	return int.from_bytes(base64.b64decode(xml.findtext(name)), "big")
+def _numbers(xml) -> dict[str, int]:
+	"""The parts of the key by the lower-cased name of the element: Frappe lower-cases the names that look like
+	HTML tags (<P> and <Q> become <p> and <q>) when it saves a value, so the case is not trusted."""
+	return {
+		element.tag.lower(): int.from_bytes(base64.b64decode(element.text or ""), "big")
+		for element in xml
+		if isinstance(element.tag, str)
+	}
 
 
 def load_private_key(key_xml: str):
 	"""The key in the format of .NET (<RSAKeyValue>) as a key of the `cryptography` library."""
 	from cryptography.hazmat.primitives.asymmetric import rsa
 
-	xml = etree.fromstring(key_xml.strip().encode())
-	public = rsa.RSAPublicNumbers(_number(xml, "Exponent"), _number(xml, "Modulus"))
+	xml = etree.fromstring(html.unescape(key_xml).strip().encode())
+	part = _numbers(xml)
+	missing = [
+		name for name in ("modulus", "exponent", "p", "q", "d", "dp", "dq", "inverseq") if name not in part
+	]
+	if missing:
+		raise ValueError(f"the key lacks: {', '.join(missing)}")
+	public = rsa.RSAPublicNumbers(part["exponent"], part["modulus"])
 	return rsa.RSAPrivateNumbers(
-		p=_number(xml, "P"),
-		q=_number(xml, "Q"),
-		d=_number(xml, "D"),
-		dmp1=_number(xml, "DP"),
-		dmq1=_number(xml, "DQ"),
-		iqmp=_number(xml, "InverseQ"),
+		p=part["p"],
+		q=part["q"],
+		d=part["d"],
+		dmp1=part["dp"],
+		dmq1=part["dq"],
+		iqmp=part["inverseq"],
 		public_numbers=public,
 	).private_key()
 
