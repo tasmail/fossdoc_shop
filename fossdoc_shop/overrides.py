@@ -126,6 +126,7 @@ class PaymentRequest(_payment_request_class()):
 		frappe.set_user("Administrator")
 		try:
 			result = super().set_as_paid()
+			issue_license(self)
 			send_payment_letter(self)
 			return result
 		finally:
@@ -156,12 +157,52 @@ class Customer(_customer_class()):
 
 
 def send_payment_letter(request):
-	"""Mail the confirmation of a paid order; a failure of the letter never undoes the payment."""
+	"""Mail the confirmation of a paid order; a failure of the letter never undoes the payment.
+
+	The text is the one of the Notification of the shop (the managers edit it in the desk). The letter carries
+	the PDF of the confirmation and, when the order has one, the licence of the server as an attachment.
+	"""
 	if request.get("reference_doctype") != "Sales Order" or not request.get("email_to"):
 		return
+	from fossdoc_shop import licensing
 	from fossdoc_shop.setup import PAYMENT_NOTIFICATION
 
 	try:
-		frappe.get_doc("Notification", PAYMENT_NOTIFICATION).send(request)
+		notification = frappe.get_doc("Notification", PAYMENT_NOTIFICATION)
+		context = {"doc": request}
+		data = brand()
+		attachments = []
+		if notification.attach_print:
+			attachments.append(
+				frappe.attach_print(
+					request.doctype, request.name, print_format=notification.print_format, doc=request
+				)
+			)
+		licence_file = licensing.issued_file(request.reference_name)
+		if licence_file:
+			file = frappe.get_doc("File", licence_file)
+			attachments.append({"fname": licensing.LICENSE_FILE, "fcontent": file.get_content()})
+		frappe.sendmail(
+			recipients=[request.email_to],
+			cc=[data["cc"]] if data["cc"] else None,
+			subject=frappe.render_template(notification.subject, context),
+			message=frappe.render_template(notification.message, context),
+			attachments=attachments,
+			reference_doctype=request.doctype,
+			reference_name=request.name,
+			now=True,
+		)
 	except Exception:  # noqa: BLE001 - whatever goes wrong with a letter, the payment stays booked
 		frappe.log_error(title="The letter of the payment was not sent")
+
+
+def issue_license(request):
+	"""Make the licence of a paid order before its letter is written; a failure only leaves the order to a manager."""
+	if request.get("reference_doctype") != "Sales Order" or not request.get("reference_name"):
+		return
+	from fossdoc_shop import licensing
+
+	try:
+		licensing.issue_for_order(request.reference_name)
+	except Exception:  # noqa: BLE001
+		frappe.log_error(title="The licence of the order was not made")

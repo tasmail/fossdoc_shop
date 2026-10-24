@@ -124,6 +124,23 @@
    "label": "Footer background",
    "fieldtype": "Color",
    "reqd": 1
+  },
+  {
+   "fieldname": "license_section",
+   "fieldtype": "Section Break",
+   "label": "Licence of the server"
+  },
+  {
+   "fieldname": "license_version",
+   "fieldtype": "Data",
+   "label": "Version of the server",
+   "description": "The version in the licence and of the signing key, for example 7.4"
+  },
+  {
+   "fieldname": "license_signing_key",
+   "fieldtype": "Password",
+   "label": "Signing key",
+   "description": "The private key of the version in the format RSAKeyValue; it is stored encrypted"
   }
  ],
  "hide_toolbar": 1,
@@ -148,5 +165,29 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "field_order": [
+  "seller_section",
+  "brand_name",
+  "seller_name",
+  "legal_name",
+  "contacts_section",
+  "sales_email",
+  "copy_sales",
+  "phone",
+  "address",
+  "site_url",
+  "calculator_path",
+  "cart_path",
+  "colors_section",
+  "color_primary",
+  "color_tint",
+  "color_line",
+  "color_text",
+  "color_muted",
+  "color_footer",
+  "license_section",
+  "license_version",
+  "license_signing_key"
+ ]
 }

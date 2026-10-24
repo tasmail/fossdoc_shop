@@ -75,8 +75,8 @@ def valid(file: str, email: str, expires: int, signature: str, now: float | None
 	return hmac.compare_digest(sign(file, email, expires), signature or "")
 
 
-def link(file: str, email: str, now: float | None = None) -> str:
-	expires = int((now if now is not None else time.time()) + LINK_HOURS * 3600)
+def link(file: str, email: str, now: float | None = None, hours: int = LINK_HOURS) -> str:
+	expires = int((now if now is not None else time.time()) + hours * 3600)
 	query = f"file={file}&email={quote(email)}&expires={expires}&sig={sign(file, email, expires)}"
 	return f"{brand()['site']}/api/method/fossdoc_shop.downloads.download?{query}"
 
@@ -158,3 +158,22 @@ def download(file: str, email: str, expires: int, sig: str):
 	response = send_private_file(row.file_url.removeprefix("/private/"))
 	response.headers["Content-Disposition"] = f'attachment; filename="{row.file_name}"'
 	raise HTTPException(response=response)
+
+
+ORDER_LINK_HOURS = 7 * 24
+
+
+def download_links(doc) -> list[dict]:
+	"""For the letter about a paid order: the files of the newest release with links that work for a week."""
+	email = doc.get("email_to")
+	release = current_release() if email else None
+	if release is None:
+		return []
+	return [
+		{
+			"name": row["file_name"],
+			"size": size_text(row["file_size"]),
+			"url": link(row["name"], email, hours=ORDER_LINK_HOURS),
+		}
+		for row in release["files"]
+	]
