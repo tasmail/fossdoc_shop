@@ -5,6 +5,7 @@ from email import policy
 from email.utils import formataddr
 
 import frappe
+from erpnext.controllers.website_list_for_contact import link_portal_users_to_contacts
 from frappe import _
 
 from fossdoc_shop.branding import brand
@@ -100,6 +101,12 @@ def make_payment_request(**args):
 		frappe.set_user(user)
 
 
+def _customer_class():
+	from erpnext.selling.doctype.customer.customer import Customer
+
+	return Customer
+
+
 def _payment_request_class():
 	"""The class that the shop uses for a Payment Request (Webshop already replaces the one of ERPNext)."""
 	from webshop.webshop.doctype.override_doctype.payment_request import PaymentRequest
@@ -124,6 +131,23 @@ class PaymentRequest(_payment_request_class()):
 			return result
 		finally:
 			frappe.set_user(user)
+
+
+class Customer(_customer_class()):
+	"""A Customer whose link to the contacts of its portal users is tried again when the Contact has just changed.
+
+	A new customer who sets the password of the account sees "Document has been modified after you have opened
+	it" and the page ends with an error: the last step of `on_update` saves the Contact of the user, which was
+	changed a moment earlier in the same request. The step reads the Contact again and adds a link only when it
+	is missing, so a second try is safe.
+	"""
+
+	def on_update(self):
+		try:
+			super().on_update()
+		except frappe.TimestampMismatchError:
+			frappe.clear_last_message()
+			link_portal_users_to_contacts(self)
 
 
 def send_payment_letter(request):
