@@ -19,6 +19,26 @@
 				<td style="padding:12px 0;font-weight:bold;text-align:right;white-space:nowrap">{{ order.currency }} {{ "%.2f"|format(order.paid or order.total or 0) }}</td>
 			</tr>
 		</table>
+		{# fossdoc-licence #}
+		{% set lic = license_info(doc) %}
+		{% set files = download_links(doc) %}
+		{% if lic.issued %}
+		<div style="margin:18px 0;padding:14px 16px;background:{{ b.tint }};border:1px solid {{ b.line }};border-radius:6px">
+			<p style="margin:0 0 8px"><b>Ліцензія</b> у вкладенні до листа (файл <b>License.xml</b>, його також додано до замовлення).</p>
+			<ul style="margin:0;padding-left:20px;font-size:14px">
+				{% for line in lic.lines %}<li>{{ line|e }}</li>{% endfor %}
+			</ul>
+		</div>
+		{% else %}
+		<p style="margin:18px 0;padding:14px 16px;background:{{ b.tint }};border:1px solid {{ b.line }};border-radius:6px">Ліцензію для вашого замовлення підготує менеджер. З вами зв'яжуться найближчим часом.</p>
+		{% endif %}
+		{% if files %}
+		<p style="margin:18px 0 6px"><b>Завантаження поточної версії</b> (посилання діють 7 днів):</p>
+		<ul style="margin:0 0 12px;padding-left:20px;font-size:14px">
+			{% for file in files %}<li><a href="{{ file.url }}">{{ file.name|e }}</a> ({{ file.size }})</li>{% endfor %}
+		</ul>
+		{% endif %}
+		<p style="margin:0 0 12px;font-size:14px">Інструкція зі встановлення: <a href="{{ b.site }}/docs/howtoinstall">{{ b.site }}/docs/howtoinstall</a></p>
 		<p style="margin:24px 0;text-align:center">
 			<a href="{{ b.orders_url }}/{{ order.name }}" style="background:{{ b.primary }};color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;display:inline-block;margin:0 4px">Переглянути замовлення</a>
 			<a href="mailto:{{ b.email }}" style="background:#fff;color:{{ b.primary }};border:1px solid {{ b.primary }};text-decoration:none;padding:11px 24px;border-radius:6px;display:inline-block;margin:0 4px">Зв'яжіться з нами</a>
