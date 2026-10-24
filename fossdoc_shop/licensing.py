@@ -12,6 +12,7 @@ else is left to a manager, and the letter to the customer says that he will be c
 
 import base64
 import hashlib
+import html
 import uuid
 from dataclasses import dataclass, field
 
@@ -215,7 +216,10 @@ def license_version() -> str:
 
 
 def license_key() -> str:
-	return (settings().get_password("license_signing_key", raise_exception=False) or "").strip()
+	"""The private key as XML. A value that is saved through the API of Frappe comes back with its angle
+	brackets escaped (&lt;RSAKeyValue&gt;), so it is unescaped here."""
+	value = settings().get_password("license_signing_key", raise_exception=False) or ""
+	return html.unescape(value).strip()
 
 
 def order_spec(order) -> Spec | None:

@@ -89,3 +89,18 @@ class TestLicenceOfAnOrder(FrappeTestCase):
 			self.assertIsNone(licensing.order_spec(order))
 		finally:
 			licensing.license_version, licensing.license_key = original
+
+	def test_a_key_that_came_back_escaped_is_read_again_as_xml(self):
+		class FakeSettings:
+			def get(self, name):
+				return "7.4"
+
+			def get_password(self, name, raise_exception=True):
+				return "&lt;RSAKeyValue&gt;&lt;Modulus&gt;AQAB&lt;/Modulus&gt;&lt;/RSAKeyValue&gt;"
+
+		original = licensing.settings
+		licensing.settings = FakeSettings
+		try:
+			self.assertEqual(licensing.license_key(), "<RSAKeyValue><Modulus>AQAB</Modulus></RSAKeyValue>")
+		finally:
+			licensing.settings = original
