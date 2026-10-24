@@ -104,3 +104,94 @@ class TestLicenceOfAnOrder(FrappeTestCase):
 			self.assertEqual(licensing.license_key(), "<RSAKeyValue><Modulus>AQAB</Modulus></RSAKeyValue>")
 		finally:
 			licensing.settings = original
+
+	def test_a_key_that_frappe_escaped_and_lower_cased_still_signs_the_same_way(self):
+		import html
+		import re
+
+		from cryptography.hazmat.primitives.asymmetric import rsa
+
+		private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+		original = key_xml(private_key)
+		# what was found on the site: angle brackets escaped, <P> and <Q> written as <p> and <q>
+		saved = html.escape(
+			re.sub(r"<(/?)([PQ])>", lambda m: f"<{m.group(1)}{m.group(2).lower()}>", original)
+		)
+		self.assertIn("&lt;p&gt;", saved)
+		spec = licensing.Spec(owner="Test", users=3, version="7.4")
+
+		fixed = licensing.generate(spec, html.unescape(saved), "11111111-2222-3333-4444-555555555555")
+		clean = licensing.generate(spec, original, "11111111-2222-3333-4444-555555555555")
+
+		self.assertEqual(fixed, clean)  # RSA PKCS#1 v1.5 is deterministic: the same key gives the same bytes
+
+	def test_a_key_with_a_missing_part_is_refused_with_its_name(self):
+		with self.assertRaisesRegex(ValueError, "inverseq"):
+			licensing.load_private_key(
+				"<RSAKeyValue><Modulus>AQAB</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>"
+			)
+
+
+class TestIssueForOrder(FrappeTestCase):
+	"""The whole way of an order: the settings, the lines, the file attached to the order, the terms."""
+
+	def setUp(self):
+		from cryptography.hazmat.primitives.asymmetric import rsa
+
+		self.key = key_xml(rsa.generate_private_key(public_exponent=65537, key_size=2048))
+		self.originals = (licensing.license_version, licensing.license_key)
+		licensing.license_version, licensing.license_key = (lambda: "7.4"), (lambda: self.key)
+
+	def tearDown(self):
+		licensing.license_version, licensing.license_key = self.originals
+
+	def make_order(self, items):
+		customer = frappe.get_all("Customer", limit=1, pluck="name")
+		if not customer:
+			self.skipTest("the site has no customer to make an order for")
+		order = frappe.get_doc(
+			{
+				"doctype": "Sales Order",
+				"customer": customer[0],
+				"delivery_date": frappe.utils.add_days(frappe.utils.nowdate(), 7),
+				"items": [
+					{
+						"item_code": code,
+						"qty": qty,
+						"rate": 1,
+						"delivery_date": frappe.utils.add_days(frappe.utils.nowdate(), 7),
+					}
+					for code, qty in items
+				],
+			}
+		)
+		order.flags.ignore_mandatory = True
+		order.insert(ignore_permissions=True)
+		return order
+
+	def test_a_paid_order_gets_a_private_licence_file_and_its_parameters_in_the_terms(self):
+		for code in ("FD-SEAT", "FD-MOD-fosslook-platform", "FD-MOD-storage"):
+			if not frappe.db.exists("Item", code):
+				self.skipTest(f"the site has no item {code}")
+		order = self.make_order([("FD-MOD-fosslook-platform", 1), ("FD-MOD-storage", 1), ("FD-SEAT", 7)])
+
+		name = licensing.issue_for_order(order.name)
+
+		file = frappe.get_doc("File", name)
+		self.assertTrue(file.is_private)
+		self.assertEqual((file.attached_to_doctype, file.attached_to_name), ("Sales Order", order.name))
+		self.assertIn(b"<MaxUserAccounts>7</MaxUserAccounts>", file.get_content())
+		self.assertIn("Користувачів: 7", frappe.db.get_value("Sales Order", order.name, "terms"))
+		self.assertEqual(licensing.issue_for_order(order.name), name)  # a second call makes no second licence
+
+	def test_a_rental_gets_no_licence(self):
+		if not frappe.db.exists("Item", "FD-RENT-SEAT"):
+			self.skipTest("the site has no rental item")
+		order = self.make_order([("FD-RENT-SEAT", 3)])
+
+		self.assertIsNone(licensing.issue_for_order(order.name))
+		self.assertFalse(
+			licensing.license_info(frappe._dict(reference_doctype="Sales Order", reference_name=order.name))[
+				"issued"
+			]
+		)
