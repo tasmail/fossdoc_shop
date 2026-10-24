@@ -22,7 +22,10 @@ after_migrate = ["fossdoc_shop.setup.ensure_calculation_mail", "fossdoc_shop.set
 doc_events = {"Email Queue": {"before_insert": "fossdoc_shop.overrides.set_reply_to"}}
 
 # A payment of a customer is booked as the administrator: see overrides.PaymentRequest.
-override_doctype_class = {"Payment Request": "fossdoc_shop.overrides.PaymentRequest"}
+override_doctype_class = {
+	"Payment Request": "fossdoc_shop.overrides.PaymentRequest",
+	"Customer": "fossdoc_shop.overrides.Customer",
+}
 
 # The Download PDF button of the print page sends the word None and the Pay button of an order is refused to a
 # customer: see overrides.download_pdf and overrides.make_payment_request.
