@@ -76,3 +76,10 @@ def describe(codes: list[str]) -> dict:
 		"Item", filters={"name": ["in", codes]}, fields=["name", "description"], limit_page_length=len(codes)
 	)
 	return {row.name: frappe.utils.strip_html_tags(row.description or "") for row in rows}
+
+
+def money(value) -> str:
+	"""An amount in hryvnia for a letter: whole numbers without kopecks, a space between the thousands."""
+	number = float(value or 0)
+	text = f"{number:,.0f}" if number.is_integer() else f"{number:,.2f}"
+	return text.replace(",", "\u00a0") + "\u00a0грн"

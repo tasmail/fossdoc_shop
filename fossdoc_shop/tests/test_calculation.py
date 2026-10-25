@@ -68,3 +68,12 @@ class TestDescribe(FrappeTestCase):
 	def test_only_existing_items_are_described(self):
 		self.assertEqual(describe([]), {})
 		self.assertEqual(describe(["no-such-item-xyz"]), {})
+
+
+class TestMoney(FrappeTestCase):
+	def test_an_amount_is_in_hryvnia_whole_without_kopecks_and_with_a_space_between_thousands(self):
+		from fossdoc_shop.calculation import money
+
+		self.assertEqual(money(3700), "3 700 грн")
+		self.assertEqual(money(1391.6), "1 391.60 грн")
+		self.assertEqual(money(None), "0 грн")

@@ -1,4 +1,4 @@
-{# fossdoc_shop: a letter without this mark is an old one (made by the scripts of the site) and is replaced #}
+{# fossdoc_shop: a letter without this mark is an old one (made by the scripts of the site) and is replaced  (fossdoc-hryvnia: the prices are in hryvnia) #}
 {% set calc = parse_calculation(doc.content) %}
 {% set b = brand() %}
 <div style="font-family:Arial,Helvetica,sans-serif;color:{{ b.text }};max-width:640px;margin:0 auto">
@@ -10,16 +10,16 @@
 		<table style="width:100%;border-collapse:collapse;font-size:14px">
 			{% for row in calc.lines %}
 			<tr>
-				<td style="padding:8px 0;border-bottom:1px solid #eee">{{ row.name|e }}{% if row.qty > 1 %} ({{ row.qty }} × {{ "%.2f"|format(row.unit) }}){% endif %}</td>
-				<td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;white-space:nowrap">$ {{ "%.2f"|format(row.total) }}</td>
+				<td style="padding:8px 0;border-bottom:1px solid #eee">{{ row.name|e }}{% if row.qty > 1 %} ({{ row.qty }} × {{ money(row.unit) }}){% endif %}</td>
+				<td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;white-space:nowrap">{{ money(row.total) }}</td>
 			</tr>
 			{% endfor %}
 			<tr>
 				<td style="padding:12px 0;font-weight:bold">Разом{% if calc.per_month %} щомісяця{% endif %}</td>
-				<td style="padding:12px 0;font-weight:bold;text-align:right;white-space:nowrap">$ {{ "%.2f"|format(calc.total) }}</td>
+				<td style="padding:12px 0;font-weight:bold;text-align:right;white-space:nowrap">{{ money(calc.total) }}</td>
 			</tr>
 		</table>
-		<p style="margin:18px 0 6px;color:{{ b.muted }};font-size:12px">Вартість вказано в доларах США. Розрахунок орієнтовний: остаточна сума буде підтверджена в кошику.</p>
+		<p style="margin:18px 0 6px;color:{{ b.muted }};font-size:12px">Вартість вказано в гривнях, без ПДВ. Розрахунок орієнтовний: остаточна сума буде підтверджена в кошику.</p>
 		<p style="margin:24px 0;text-align:center">
 			<a href="{{ b.cart_url if calc.kind == 'cart' else b.calculator_url }}" style="background:{{ b.primary }};color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;display:inline-block;margin:0 4px">Продовжити оформлення</a>
 			<a href="mailto:{{ b.email }}" style="background:#fff;color:{{ b.primary }};border:1px solid {{ b.primary }};text-decoration:none;padding:11px 24px;border-radius:6px;display:inline-block;margin:0 4px">Зв'яжіться з нами</a>
