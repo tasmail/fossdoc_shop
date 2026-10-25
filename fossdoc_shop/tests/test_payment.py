@@ -122,6 +122,31 @@ class TestPaymentMail(FrappeTestCase):
 		self.assertNotIn("<script>", html)
 		self.assertNotIn("Audit <i>X</i>", html)
 
+	def test_the_letter_and_the_pdf_follow_the_language_of_the_order(self):
+		message = frappe.db.get_value("Notification", PAYMENT_NOTIFICATION, "message")
+		doc = frappe.get_doc(
+			{
+				"doctype": "Payment Request",
+				"name": "ACC-PRQ-1",
+				**{k: v for k, v in request().items() if k not in ("doctype", "name")},
+			}
+		)
+		doc.name = "ACC-PRQ-1"
+		expected = {
+			"ru": ("Спасибо за оплату", "Подтверждение оплаты"),
+			"en": ("Thank you for your payment", "Payment confirmation"),
+		}
+		for lang, (thanks, receipt) in expected.items():
+			use_language(self, lang)
+			with with_the_order():
+				html = frappe.render_template(message, {"doc": request()})
+				pdf_html = frappe.get_print(
+					"Payment Request", doc=doc, print_format=PAYMENT_PRINT_FORMAT, as_pdf=False
+				)
+			self.assertIn(thanks, html, lang)
+			self.assertNotIn("Дякуємо", html, lang)
+			self.assertIn(f"<h1>{receipt}</h1>", pdf_html, lang)
+
 	def test_the_pdf_is_a_confirmation_with_the_payer_the_lines_and_the_stamp(self):
 		doc = frappe.get_doc(
 			{

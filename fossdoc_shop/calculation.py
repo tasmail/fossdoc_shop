@@ -10,6 +10,7 @@ import json
 import math
 
 import frappe
+from frappe import _
 
 MARKER = "Розрахунок вартості FossDoc"
 LANGUAGES = ("uk", "ru", "en")
@@ -82,4 +83,4 @@ def money(value) -> str:
 	"""An amount in hryvnia for a letter: whole numbers without kopecks, a space between the thousands."""
 	number = float(value or 0)
 	text = f"{number:,.0f}" if number.is_integer() else f"{number:,.2f}"
-	return text.replace(",", "\u00a0") + "\u00a0грн"
+	return text.replace(",", "\u00a0") + "\u00a0" + _("грн")
