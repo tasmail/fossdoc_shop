@@ -28,3 +28,10 @@ def seed_settings(**override):
 	doc.save(ignore_permissions=True)
 	frappe.clear_cache(doctype="FossDoc Shop Settings")
 	return doc
+
+
+def use_language(test, lang="uk"):
+	"""The language of the request for the length of a test (the letters are made in the language of the buyer)."""
+	previous = frappe.local.lang
+	frappe.local.lang = lang
+	test.addCleanup(setattr, frappe.local, "lang", previous)

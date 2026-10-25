@@ -167,6 +167,9 @@ def send_payment_letter(request):
 	from fossdoc_shop import licensing
 	from fossdoc_shop.setup import PAYMENT_NOTIFICATION
 
+	# the letter is made in the language of the order (the language that the buyer chose on the site)
+	previous = frappe.local.lang
+	frappe.local.lang = frappe.db.get_value("Sales Order", request.reference_name, "language") or previous
 	try:
 		notification = frappe.get_doc("Notification", PAYMENT_NOTIFICATION)
 		context = {"doc": request}
@@ -194,6 +197,8 @@ def send_payment_letter(request):
 		)
 	except Exception:  # noqa: BLE001 - whatever goes wrong with a letter, the payment stays booked
 		frappe.log_error(title="The letter of the payment was not sent")
+	finally:
+		frappe.local.lang = previous
 
 
 def issue_license(request):

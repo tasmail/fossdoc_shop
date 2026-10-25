@@ -19,10 +19,29 @@ jinja = {
 	]
 }
 
-after_install = ["fossdoc_shop.setup.ensure_calculation_mail", "fossdoc_shop.setup.ensure_payment_mail"]
-after_migrate = ["fossdoc_shop.setup.ensure_calculation_mail", "fossdoc_shop.setup.ensure_payment_mail"]
+after_install = [
+	"fossdoc_shop.orders.ensure_item_fields",
+	"fossdoc_shop.setup.ensure_calculation_mail",
+	"fossdoc_shop.setup.ensure_payment_mail",
+]
+after_migrate = [
+	"fossdoc_shop.orders.ensure_item_fields",
+	"fossdoc_shop.setup.ensure_calculation_mail",
+	"fossdoc_shop.setup.ensure_payment_mail",
+]
 
-doc_events = {"Email Queue": {"before_insert": "fossdoc_shop.overrides.set_reply_to"}}
+doc_events = {
+	"Email Queue": {"before_insert": "fossdoc_shop.overrides.set_reply_to"},
+	"Customer": {"before_insert": "fossdoc_shop.orders.set_language"},
+	"Quotation": {
+		"before_insert": "fossdoc_shop.orders.set_language",
+		"before_validate": "fossdoc_shop.orders.limit_quantities",
+	},
+	"Sales Order": {
+		"before_insert": "fossdoc_shop.orders.set_language",
+		"before_validate": "fossdoc_shop.orders.limit_quantities",
+	},
+}
 
 # A payment of a customer is booked as the administrator: see overrides.PaymentRequest.
 override_doctype_class = {

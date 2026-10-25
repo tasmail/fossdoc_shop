@@ -11,7 +11,7 @@ from fossdoc_shop.setup import (
 	ensure_payment_mail,
 	refresh_templates,
 )
-from fossdoc_shop.tests.seed import seed_settings
+from fossdoc_shop.tests.seed import seed_settings, use_language
 
 ORDER = {
 	"doctype": "Sales Order",
@@ -75,6 +75,7 @@ class TestPaymentOrder(FrappeTestCase):
 
 class TestPaymentMail(FrappeTestCase):
 	def setUp(self):
+		use_language(self)
 		seed_settings()
 		frappe.delete_doc("Notification", PAYMENT_NOTIFICATION, force=True)
 		ensure_payment_mail()
@@ -94,7 +95,7 @@ class TestPaymentMail(FrappeTestCase):
 		)
 
 	def test_a_migration_keeps_the_edits_of_a_manager_and_refresh_puts_the_texts_back(self):
-		edited = "{# fossdoc_shop #}<p>edited</p>"
+		edited = "{# fossdoc_shop fossdoc-licence fossdoc-i18n #}<p>edited</p>"
 		frappe.db.set_value("Notification", PAYMENT_NOTIFICATION, "message", edited)
 
 		ensure_payment_mail()
@@ -151,12 +152,20 @@ class TestPaymentMail(FrappeTestCase):
 
 
 class TestSendPaymentLetter(FrappeTestCase):
+	def setUp(self):
+		use_language(self)
+
 	def test_the_letter_is_sent_for_an_order_with_an_address_of_the_payer(self):
-		with patch("frappe.get_doc") as get_doc:
+		with (
+			patch("frappe.get_doc") as get_doc,
+			patch("frappe.sendmail") as sendmail,
+			patch("frappe.attach_print", return_value={"fname": "x.pdf", "fcontent": b""}),
+			patch("frappe.render_template", return_value="letter"),
+		):
 			overrides.send_payment_letter(request())
 
 		get_doc.assert_called_once_with("Notification", PAYMENT_NOTIFICATION)
-		get_doc.return_value.send.assert_called_once()
+		sendmail.assert_called_once()
 
 	def test_nothing_is_sent_for_another_document_or_without_an_address(self):
 		with patch("frappe.get_doc") as get_doc:
@@ -166,8 +175,13 @@ class TestSendPaymentLetter(FrappeTestCase):
 		get_doc.assert_not_called()
 
 	def test_a_failure_of_the_letter_is_logged_and_never_undoes_the_payment(self):
-		with patch("frappe.get_doc") as get_doc, patch("frappe.log_error") as log:
-			get_doc.return_value.send.side_effect = RuntimeError("smtp down")
+		with (
+			patch("frappe.get_doc"),
+			patch("frappe.sendmail", side_effect=RuntimeError("smtp down")),
+			patch("frappe.attach_print", return_value={"fname": "x.pdf", "fcontent": b""}),
+			patch("frappe.render_template", return_value="letter"),
+			patch("frappe.log_error") as log,
+		):
 			overrides.send_payment_letter(request())
 
 		log.assert_called_once()

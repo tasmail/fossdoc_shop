@@ -14,28 +14,28 @@
 </style>
 {{ letter_head or "" }}
 <div class="receipt">
-	<h1>Підтвердження оплати</h1>
+	<h1>{{ _("Підтвердження оплати") }}</h1>
 	{% if order %}
-	<p style="text-align:center"><span class="stamp">СПЛАЧЕНО</span></p>
-	<p class="about" style="text-align:center">Замовлення {{ order.name }} від {{ frappe.utils.formatdate(order.date, "dd.MM.yyyy") }} · оплата {{ frappe.utils.formatdate(order.paid_on, "dd.MM.yyyy") }}{% if order.gateway %} · {{ order.gateway }}{% endif %}</p>
+	<p style="text-align:center"><span class="stamp">{{ _("СПЛАЧЕНО") }}</span></p>
+	<p class="about" style="text-align:center">{{ _("Замовлення") }} {{ order.name }} {{ _("від") }} {{ frappe.utils.formatdate(order.date, "dd.MM.yyyy") }} {{ _("· оплата") }} {{ frappe.utils.formatdate(order.paid_on, "dd.MM.yyyy") }}{% if order.gateway %} · {{ order.gateway }}{% endif %}</p>
 	<div class="payer">
-		<b>Платник:</b> {{ (order.customer or "")|e }}<br>
+		<b>{{ _("Платник:") }}</b> {{ (order.customer or "")|e }}<br>
 		{% for line in order.address %}{{ line|e }}{% if not loop.last %}<br>{% endif %}{% endfor %}
 	</div>
 	<table>
-		<tr><th>Найменування</th><th>Кількість</th><th>Ціна, {{ order.currency }}</th><th>Сума, {{ order.currency }}</th></tr>
+		<tr><th>{{ _("Найменування") }}</th><th>{{ _("Кількість") }}</th><th>{{ _("Ціна,") }} {{ order.currency }}</th><th>{{ _("Сума,") }} {{ order.currency }}</th></tr>
 		{% for row in order["items"] %}
 		<tr>
-			<td>{{ row.name|e }}</td>
+			<td>{{ _(row.name)|e }}</td>
 			<td class="sum">{{ "%.0f"|format(row.qty or 0) }}</td>
 			<td class="sum">{{ "%.2f"|format(row.rate or 0) }}</td>
 			<td class="sum">{{ "%.2f"|format(row.amount or 0) }}</td>
 		</tr>
 		{% endfor %}
-		<tr class="total"><td colspan="3">Сплачено</td><td class="sum">{{ order.currency }} {{ "%.2f"|format(order.paid or order.total or 0) }}</td></tr>
+		<tr class="total"><td colspan="3">{{ _("Сплачено") }}</td><td class="sum">{{ order.currency }} {{ "%.2f"|format(order.paid or order.total or 0) }}</td></tr>
 	</table>
 	{% else %}
-	<p>Оплату отримано.</p>
+	<p>{{ _("Оплату отримано.") }}</p>
 	{% endif %}
 </div>
 {{ footer or "" }}

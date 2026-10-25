@@ -25,6 +25,7 @@ def payment_order(doc) -> dict | None:
 	order = frappe.get_doc("Sales Order", doc.get("reference_name"))
 	return {
 		"name": order.name,
+		"language": order.get("language") or frappe.local.lang,
 		"date": order.get("transaction_date"),
 		"currency": order.get("currency") or doc.get("currency"),
 		"customer": order.get("customer_name") or order.get("customer"),

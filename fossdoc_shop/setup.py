@@ -20,7 +20,7 @@ PAYMENT_PRINT_FORMAT = "Підтвердження оплати FossDoc"
 PAYMENT_NOTIFICATION = f"{SUBJECT_MARK} отримано"
 MAIL_MARK = "fossdoc_shop"
 LICENCE_MARK = "fossdoc-licence"  # in the letter of a payment since it carries the licence
-HRYVNIA_MARK = "fossdoc-hryvnia"  # in the letter of a calculation since the prices are in hryvnia
+HRYVNIA_MARK = "fossdoc-i18n"  # in the letters since they are translated (they replace the earlier ones once)
 
 
 def read(name: str) -> str:
@@ -96,7 +96,7 @@ def ensure_calculation_mail(overwrite: bool = False):
 	ensure_letter_head(overwrite)
 	ensure_print_format(overwrite)
 	values = {
-		"subject": MARKER,
+		"subject": '{{ _("Розрахунок вартості") }} FossDoc',
 		"document_type": "Communication",
 		"event": "New",
 		"channel": "Email",
@@ -118,6 +118,15 @@ def ensure_payment_mail(overwrite: bool = False):
 
 	The event is Custom: the Payment Request of the shop sends it itself when it books the payment.
 	"""
+	# A letter that was made before the licence went into it, or before the texts were translated, has not the
+	# marks of these: the letter, the PDF and the letter head are replaced once.
+	message = (
+		frappe.db.get_value("Notification", PAYMENT_NOTIFICATION, "message")
+		if frappe.db.exists("Notification", PAYMENT_NOTIFICATION)
+		else None
+	)
+	legacy = message is not None and (LICENCE_MARK not in message or HRYVNIA_MARK not in message)
+	overwrite = overwrite or legacy
 	ensure_letter_head(overwrite)
 	pdf = {
 		"doc_type": "Payment Request",
@@ -132,7 +141,7 @@ def ensure_payment_mail(overwrite: bool = False):
 	if doc:
 		doc.insert(ignore_permissions=True)
 	values = {
-		"subject": SUBJECT_MARK + " {{ doc.reference_name }} отримано",
+		"subject": '{{ _("Оплату замовлення") }} {{ doc.reference_name }} {{ _("отримано") }}',
 		"document_type": "Payment Request",
 		"event": "Custom",
 		"channel": "Email",
@@ -142,11 +151,7 @@ def ensure_payment_mail(overwrite: bool = False):
 		"attach_print": 1,
 		"print_format": PAYMENT_PRINT_FORMAT,
 	}
-	# The letter that was made before the licence went into it has no mark of the licence: replace it once.
-	legacy = frappe.db.exists("Notification", PAYMENT_NOTIFICATION) and LICENCE_MARK not in (
-		frappe.db.get_value("Notification", PAYMENT_NOTIFICATION, "message") or ""
-	)
-	doc = _save("Notification", PAYMENT_NOTIFICATION, values, overwrite or bool(legacy))
+	doc = _save("Notification", PAYMENT_NOTIFICATION, values, overwrite)
 	if doc:
 		doc.append("recipients", {"receiver_by_document_field": "email_to", "cc": "{{ brand().cc }}"})
 		doc.insert(ignore_permissions=True)

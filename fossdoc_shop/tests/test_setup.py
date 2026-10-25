@@ -11,7 +11,7 @@ from fossdoc_shop.setup import (
 	ensure_calculation_mail,
 	refresh_templates,
 )
-from fossdoc_shop.tests.seed import seed_settings
+from fossdoc_shop.tests.seed import seed_settings, use_language
 
 
 def communication(content):
@@ -20,11 +20,12 @@ def communication(content):
 
 class TestCalculationMail(FrappeTestCase):
 	def setUp(self):
+		use_language(self)
 		seed_settings()
 		ensure_calculation_mail()
 
 	def test_the_notification_is_created_once_and_a_migration_keeps_the_edits_of_a_manager(self):
-		edited = "{# fossdoc_shop fossdoc-hryvnia #}<p>edited by a manager</p>"
+		edited = "{# fossdoc_shop fossdoc-i18n #}<p>edited by a manager</p>"
 		frappe.db.set_value("Notification", NOTIFICATION, "message", edited)
 
 		ensure_calculation_mail()
@@ -92,6 +93,7 @@ class TestCalculationMail(FrappeTestCase):
 
 class TestOffer(FrappeTestCase):
 	def setUp(self):
+		use_language(self)
 		seed_settings()
 		ensure_calculation_mail()
 		self.content = (
@@ -154,7 +156,8 @@ class TestOneSourceOfLook(FrappeTestCase):
 			"an e-mail address": r"[\w.+-]+@[\w-]+\.[a-z]{2,}",
 			"a phone number": r"\+\d[\d ()-]{7,}",
 			"a colour": r"#[0-9a-fA-F]{6}\b",
-			"a site address": r"https?://(?!www\.w3\.org)[\w.-]+\.[a-z]{2,}",
+			# the namespaces of XML are names of a format, and the National Bank is a public service: not the seller
+			"a site address": r"https?://(?!www\.w3\.org|www\.foss\.kharkov\.ua/FossDoc/|bank\.gov\.ua/)[\w.-]+\.[a-z]{2,}",
 		}
 		for path in files:
 			if path.name in {"hooks.py"}:  # the publisher and the e-mail of the app itself

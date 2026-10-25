@@ -12,7 +12,7 @@ import math
 import frappe
 
 MARKER = "Розрахунок вартості FossDoc"
-LANGUAGES = ("uk", "ru")
+LANGUAGES = ("uk", "ru", "en")
 KINDS = ("calculator", "cart")  # where the calculation comes from: the calculator or the cart of the shop
 MAX_LINES = 120
 MAX_TEXT = 200
