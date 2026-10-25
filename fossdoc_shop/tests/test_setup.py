@@ -24,7 +24,7 @@ class TestCalculationMail(FrappeTestCase):
 		ensure_calculation_mail()
 
 	def test_the_notification_is_created_once_and_a_migration_keeps_the_edits_of_a_manager(self):
-		edited = "{# fossdoc_shop #}<p>edited by a manager</p>"
+		edited = "{# fossdoc_shop fossdoc-hryvnia #}<p>edited by a manager</p>"
 		frappe.db.set_value("Notification", NOTIFICATION, "message", edited)
 
 		ensure_calculation_mail()
@@ -77,8 +77,8 @@ class TestCalculationMail(FrappeTestCase):
 		html = frappe.render_template(message, {"doc": communication(f"{MARKER}\n{body}")})
 
 		self.assertIn("Клієнтських місць", html)
-		self.assertIn("9 × 50.00", html)
-		self.assertIn("$ 450.00", html)
+		self.assertIn("9 × 50\u00a0грн", html)
+		self.assertIn("450\u00a0грн", html)
 		self.assertIn("щомісяця", html)
 
 	def test_a_message_that_is_not_a_calculation_gets_a_plain_answer_and_no_html_from_the_guest(self):
@@ -128,7 +128,7 @@ class TestOffer(FrappeTestCase):
 		)
 
 		self.assertIn("Комерційна пропозиція", html)
-		self.assertIn("$ 150.00", html)
+		self.assertIn("150\u00a0грн", html)
 		self.assertIn("5", html)
 		self.assertNotIn("<b>X</b>", html)
 

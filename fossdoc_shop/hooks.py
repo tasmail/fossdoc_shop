@@ -11,6 +11,7 @@ jinja = {
 	"methods": [
 		"fossdoc_shop.calculation.parse_calculation",
 		"fossdoc_shop.calculation.describe",
+		"fossdoc_shop.calculation.money",
 		"fossdoc_shop.branding.brand",
 		"fossdoc_shop.licensing.license_info",
 		"fossdoc_shop.downloads.download_links",

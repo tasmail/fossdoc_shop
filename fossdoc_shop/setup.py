@@ -20,6 +20,7 @@ PAYMENT_PRINT_FORMAT = "Підтвердження оплати FossDoc"
 PAYMENT_NOTIFICATION = f"{SUBJECT_MARK} отримано"
 MAIL_MARK = "fossdoc_shop"
 LICENCE_MARK = "fossdoc-licence"  # in the letter of a payment since it carries the licence
+HRYVNIA_MARK = "fossdoc-hryvnia"  # in the letter of a calculation since the prices are in hryvnia
 
 
 def read(name: str) -> str:
@@ -85,6 +86,13 @@ def ensure_downloads_group():
 
 def ensure_calculation_mail(overwrite: bool = False):
 	"""The Notification that mails a calculation to the visitor (the PDF offer is attached)."""
+	# A letter of the dollar time has no mark of the hryvnia (a letter of the scripts of the site has no mark of
+	# the app either): the letter and the offer are replaced once.
+	legacy = frappe.db.exists("Notification", NOTIFICATION) and (
+		MAIL_MARK not in (frappe.db.get_value("Notification", NOTIFICATION, "message") or "")
+		or HRYVNIA_MARK not in (frappe.db.get_value("Notification", NOTIFICATION, "message") or "")
+	)
+	overwrite = overwrite or bool(legacy)
 	ensure_letter_head(overwrite)
 	ensure_print_format(overwrite)
 	values = {
@@ -99,11 +107,7 @@ def ensure_calculation_mail(overwrite: bool = False):
 		"attach_print": 1,
 		"print_format": PRINT_FORMAT,
 	}
-	# The Notification that the scripts of the site made before the app has no mark of the app: replace it once.
-	legacy = frappe.db.exists("Notification", NOTIFICATION) and MAIL_MARK not in (
-		frappe.db.get_value("Notification", NOTIFICATION, "message") or ""
-	)
-	doc = _save("Notification", NOTIFICATION, values, overwrite or bool(legacy))
+	doc = _save("Notification", NOTIFICATION, values, overwrite)
 	if doc:
 		doc.append("recipients", {"receiver_by_document_field": "sender", "cc": "{{ brand().cc }}"})
 		doc.insert(ignore_permissions=True)

@@ -93,5 +93,5 @@ class TestMailEndToEnd(FrappeTestCase):
 		letters = messages
 		letter = mailpit(f"/message/{letters[0]['ID']}")
 		self.assertIn("Резолюції", letter["HTML"])
-		self.assertIn("$ 200.00", letter["HTML"])
+		self.assertIn("200\u00a0грн", letter["HTML"])
 		self.assertEqual([a["ContentType"] for a in letter["Attachments"]], ["application/pdf"])
