@@ -141,6 +141,32 @@
    "fieldtype": "Password",
    "label": "Signing key",
    "description": "The private key of the version in the format RSAKeyValue; it is stored encrypted"
+  },
+  {
+   "fieldname": "prices_section",
+   "fieldtype": "Section Break",
+   "label": "Prices in hryvnia"
+  },
+  {
+   "fieldname": "master_price_list",
+   "fieldtype": "Link",
+   "options": "Price List",
+   "label": "Price list in USD",
+   "description": "The price list the managers edit; the shop sells from the list in UAH that is made from it"
+  },
+  {
+   "fieldname": "uah_price_list",
+   "fieldtype": "Link",
+   "options": "Price List",
+   "label": "Price list in UAH",
+   "description": "Made from the list in USD at the rate of the National Bank; do not edit it by hand"
+  },
+  {
+   "fieldname": "rounding_step",
+   "fieldtype": "Float",
+   "label": "Rounding step (UAH)",
+   "default": "1",
+   "description": "A price in UAH is rounded to a multiple of this number, for example 1 or 10"
   }
  ],
  "hide_toolbar": 1,
@@ -188,6 +214,10 @@
   "color_footer",
   "license_section",
   "license_version",
-  "license_signing_key"
+  "license_signing_key",
+  "prices_section",
+  "master_price_list",
+  "uah_price_list",
+  "rounding_step"
  ]
 }
