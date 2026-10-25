@@ -27,7 +27,9 @@ def ensure_item_fields():
 
 
 def set_language(doc, method=None):
-	"""A customer, a quotation and an order keep the language that the buyer used on the site."""
+	"""A customer, a quotation, an order and a buyer who signs up keep the language that was used on the site."""
+	if doc.get("user_type") not in (None, "Website User"):
+		return  # a user of the desk keeps the language that the manager gives
 	if not doc.get("language") and frappe.local.lang in LANGUAGES:
 		doc.language = frappe.local.lang
 

@@ -108,3 +108,16 @@ class TestOrders(FrappeTestCase):
 		other = frappe._dict(language=None)
 		orders.set_language(other)
 		self.assertIsNone(other.language)
+
+	def test_a_buyer_who_signs_up_keeps_the_language_of_the_site_and_a_user_of_the_desk_is_left_alone(self):
+		previous = frappe.local.lang
+		self.addCleanup(setattr, frappe.local, "lang", previous)
+		frappe.local.lang = "ru"
+
+		buyer = frappe._dict(doctype="User", user_type="Website User", language=None)
+		orders.set_language(buyer)
+		manager = frappe._dict(doctype="User", user_type="System User", language=None)
+		orders.set_language(manager)
+
+		self.assertEqual(buyer.language, "ru")
+		self.assertIsNone(manager.language)
