@@ -83,7 +83,11 @@ def link(file: str, email: str, now: float | None = None, hours: int = LINK_HOUR
 
 def size_text(size: int | None) -> str:
 	size = int(size or 0)
-	return f"{size / 1024 / 1024:.1f} МБ" if size >= 1024 * 1024 else f"{max(size // 1024, 1)} КБ"
+	return (
+		f"{size / 1024 / 1024:.1f} " + _("МБ")
+		if size >= 1024 * 1024
+		else f"{max(size // 1024, 1)} " + _("КБ")
+	)
 
 
 def ensure_lead(full_name: str, email: str, phone: str, version: str):
@@ -110,10 +114,12 @@ def ensure_lead(full_name: str, email: str, phone: str, version: str):
 
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=10, seconds=60 * 60)
-def request_download(full_name: str, email: str, phone: str = "", website: str = ""):
+def request_download(full_name: str, email: str, phone: str = "", website: str = "", lang: str = ""):
 	"""Store the request as a Lead and mail the links of the newest release (a filled `website` is a robot)."""
 	if website:
 		return {"sent": True}
+	if lang in ("uk", "ru", "en"):  # the language of the page that the visitor used
+		frappe.local.lang = lang
 	email = validate_email_address(email, throw=True)
 	full_name = (full_name or "").strip()
 	if not full_name:
@@ -130,7 +136,7 @@ def request_download(full_name: str, email: str, phone: str = "", website: str =
 	]
 	frappe.sendmail(
 		recipients=[email],
-		subject=f"Демо-версія {data['brand']} {version}",
+		subject=f"{_('Демо-версія')} {data['brand']} {version}",
 		message=frappe.render_template(
 			"fossdoc_shop/" + MAIL_TEMPLATE,
 			{"name": full_name, "version": version, "links": links, "hours": LINK_HOURS, "b": data},

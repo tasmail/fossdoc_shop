@@ -17,8 +17,11 @@ def send_calculation(sender: str, message: str):
 	PDF offer and not the raw text of the message.
 	"""
 	sender = validate_email_address(sender, throw=True)
-	if not parse_calculation(message):
+	calculation = parse_calculation(message)
+	if not calculation:
 		frappe.throw(_("The calculation is not valid"), frappe.ValidationError)
+	# the letter and the offer are made in the language of the page that the visitor calculated on
+	frappe.local.lang = calculation["lang"]
 	frappe.get_doc(
 		{
 			"doctype": "Communication",

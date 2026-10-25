@@ -1,0 +1,142 @@
+· система електронного документообігу,· electronic document management system
+"Вітаємо,","Hello,"
+Цей лист містить розрахунок вартості системи документообігу,This letter contains the cost calculation of the document management system
+"згідно вашого вибору. Комерційна пропозиція у вкладенні (PDF). Якщо у вас виникли питання, звертайтеся до нас за консультацією.","according to your choice. The commercial offer is attached (PDF). If you have any questions, contact us for advice."
+Разом,Total
+щомісяця,per month
+"Вартість вказано в гривнях, без ПДВ. Розрахунок орієнтовний: остаточна сума буде підтверджена в кошику.","Prices are in hryvnia (UAH), VAT excluded. The calculation is approximate: the final amount is confirmed in the cart."
+Продовжити оформлення,Continue to checkout
+Зв'яжіться з нами,Contact us
+"Розрахунок не вдалося прочитати. Напишіть нам, і ми підготуємо пропозицію вручну.",We could not read the calculation. Write to us and we will prepare the offer manually.
+"З повагою,","Best regards,"
+Калькулятор вартості,Cost calculator
+Система електронного документообігу,Electronic document management system
+Комерційна пропозиція,Commercial offer
+Дата:,Date:
+1. Вибрана конфігурація,1. Selected configuration
+Найменування,Name
+Кількість,Quantity
+"Ціна, грн","Price, UAH"
+"Сума, грн","Amount, UAH"
+"Вартість вказано в гривнях, без ПДВ. Пропозиція орієнтовна: остаточну суму підтверджує кошик на сайті.","Prices are in hryvnia (UAH), VAT excluded. The offer is approximate: the final amount is confirmed by the cart on the site."
+Розрахунок не вдалося прочитати.,We could not read the calculation.
+2. Можливості системи,2. Features of the system
+"Робота з вхідною та вихідною кореспонденцією: отримання листів, реєстрація, облік.","Work with incoming and outgoing correspondence: receiving letters, registration, accounting."
+"Розподіл прав доступу до папок, документів і полів у документах.","Access rights to folders, documents and document fields."
+"Службові завдання на основі документів типу «Доручення», резолюції та контроль виконання.","Work tasks based on “Assignment” documents, resolutions and execution control."
+"Гнучке налаштування маршрутів документів, узгодження та реєстрація проектів.","Flexible document routing, approval and registration of drafts."
+Потужний пошук документів з переглядом вкладень і пов'язаних документів.,Powerful document search with a view of attachments and related documents.
+"Інтеграція з офісними програмами (Microsoft Word, Microsoft Excel) та електронним цифровим підписом.","Integration with office programs (Microsoft Word, Microsoft Excel) and the electronic digital signature."
+"Історія та аудит роботи користувачів, статистика роботи з документом.","History and audit of user actions, statistics of work with a document."
+"Web-сервер і підтримка тонкого клієнта, модульність, потокове сканування, штрих-кодування.","Web server and thin client support, modularity, batch scanning, bar coding."
+· демо-версія,· demo version
+Дякуємо за інтерес до,Thank you for your interest in
+. Нижче посилання для завантаження демонстраційної версії,. Below are the links to download the demo version
+. Посилання діють,. The links are valid for
+год. з моменту цього листа.,hours from this letter.
+Завантажити,Download
+"Перед встановленням рекомендуємо ознайомитися з розділом «Інсталяція системи» та статтею «Швидкий старт» у документації. Якщо посилання не спрацювало, відповідайте на цей лист і ми надішлемо нове.","Before installing we recommend reading the section “System installation” and the article “Quick start” in the documentation. If a link does not work, reply to this letter and we will send a new one."
+· тел.,· tel.
+· оплату отримано,· payment received
+"Дякуємо за оплату,","Thank you for your payment,"
+Ми отримали оплату замовлення,We have received the payment for order
+від,dated
+. Підтвердження оплати у вкладенні (PDF).,. The payment confirmation is attached (PDF).
+Сплачено,Paid
+Ліцензія,Licence
+у вкладенні до листа (файл,is attached to this letter (file
+", його також додано до замовлення).",", it is also added to the order)."
+Ліцензію для вашого замовлення підготує менеджер. З вами зв'яжуться найближчим часом.,A manager will prepare the licence for your order. We will contact you shortly.
+Завантаження поточної версії,Download of the current version
+(посилання діють 7 днів):,(the links are valid for 7 days):
+Інструкція зі встановлення:,Installation guide:
+Переглянути замовлення,View the order
+"Оплату отримано. Якщо виникнуть питання, відповідайте на цей лист.","Payment received. If you have any questions, reply to this letter."
+Підтвердження оплати,Payment confirmation
+СПЛАЧЕНО,PAID
+Замовлення,Order
+· оплата,· paid
+Платник:,Payer:
+"Ціна,","Price,"
+"Сума,","Amount,"
+Оплату отримано.,Payment received.
+Оплату замовлення,Payment for order
+отримано,received
+Розрахунок вартості,Cost calculation
+Демо-версія,Demo version
+МБ,MB
+КБ,KB
+Користувачів: {0},Users: {0}
+Користувачів з ЕЦП: {0},E-signature users: {0}
+Версія сервера: {0},Server version: {0}
+Модулі: {0},Modules: {0}
+Ліцензія FossDoc,FossDoc licence
+Платформа FossLook,FossLook platform
+"Основний модуль, що забезпечує роботу системи, дозволяє створювати власні рішення та ін.",The main module that makes the system work; it lets you create your own solutions and more.
+Сховище,Storage
+"Дозволяє зберігати всі доручення, проекти документів, самі документи і довідники в єдиній базі даних.","It stores all tasks, draft documents, the documents themselves and reference books in a single database."
+Резолюції,Resolutions
+"Дозволяє підготувати резолюції до документа, як помічнику керівника, так і самому керівнику.",It lets both the assistant of a manager and the manager prepare resolutions for a document.
+Проекти документів,Draft documents
+"Реалізує механізм створення документа з його проекту, aбо на базі існуючого документу.",It implements the creation of a document from its draft or from an existing document.
+Періодичні задачі,Recurring tasks
+"Підтримує налаштування та виконання періодичних завдань, як пов'язаних з документами, так і незалежних від них.","It supports setting up and executing recurring tasks, both related to documents and independent of them."
+Службові записки,Internal memos
+"Забезпечує документообіг службових записок: створення службової та її реєстрацію, відправку по маршруту і т.п.","It handles the flow of internal memos: creation and registration, sending along a route and so on."
+Журнал,Journal
+Дозволяє зафіксувати факт передачі паперових оригіналів або копій документів до справи.,It records the handing over of paper originals or copies of documents and their filing to a case file.
+Історія,History
+"Протоколює зміни, що виконувалися користувачами над документами обраного типу.",It logs the changes that users made to documents of the chosen type.
+Web-сервер,Web server
+"Починаючи з версії 6.0, до серверу FossDoc можна підключатися за допомогою звичайного веб-браузера.",Since version 6.0 you can connect to the FossDoc server with an ordinary web browser.
+Доменна авторизація,Domain authorisation
+"Дозволяє авторизуватися в системі документообігу, використовуючи механізм авторизації домену Windows.",It lets users log in to the document management system with the authorisation of a Windows domain.
+Контроль документів,Document control
+Реалізує механізм контролю над виконанням користувачами завдань за документами.,It implements control over the execution of document tasks by the users.
+Звернення громадян,Citizen appeal
+"Забезпечує обробку звернень громадян. Можна створити вихідний лист безпосередньо з картки ""Звернення громадян"".","It handles citizen appeals. A reply letter can be created directly from the ""Citizen appeals"" card."
+Аудит,Audit
+Протоколює всі дії над усіма об'єктами СЕД.,It logs all actions on all objects of the EDMS.
+Статистика,Statistics
+Веде статистику роботи з документом.,It keeps statistics of work with a document.
+Інтернет пошта,Internet mail
+Модуль Інтернет пошта реалізує функції поштового серверу Системи.,The Internet mail module implements the functions of the mail server of the system.
+Помічники співробітників,Employee assistants
+"Автоматизує роботу помічників співробітників, як прийнято у діловодстві.","It automates the work of the assistants of employees, as is usual in records management."
+Обчислювальні поля,Calculated fields
+Дозволяє використовувати арифметичні операції під час роботи з полями документів.,It allows arithmetic operations when working with document fields.
+Повідомлення маршрутизації,Routing notifications
+Повідомлює на електронну пошту про зміни в маршрутах документів.,It sends e-mail notices about changes in document routes.
+Обговорення документів,Document discussions
+Даний модуль призначено для організації чату за документом.,This module is for organising a chat about a document.
+Веб-портал,Web portal
+"Для публікації документів на web сайті (порталі) та обробки документів, отриманих з порталу.",For publishing documents on a web site (portal) and processing documents received from the portal.
+Інтеграція СЕВ,SEV integration
+Дозволяє приймати та відправляти документи між різними державними установами України.,It lets different government bodies of Ukraine receive and send documents.
+Розпізнавання,Recognition
+Система розпізнавання текстів,Text recognition system
+Архівний сервер,Archive server
+Забезпечує звільнення БД від старих документів та перенесення їх до архівного серверу,It frees the database from old documents and moves them to the archive server.
+Аутентифікація та ЕЦП за технологією Mobile ID.,Authentication and digital signature with Mobile ID technology.
+"Інтеграція ""ПТАХ""",PTAKH integration
+Обмін підписаними ЕЦП документами з вашими контрагентами через API ПТАХ,Exchange of documents signed with a digital signature with your counterparties through the PTAKH API.
+"Інтеграція ""Вчасно""",Vchasno integration
+"Обмін підписаними ЕЦП документами з вашими контрагентами через сервіс ""Вчасно""",Exchange of documents signed with a digital signature with your counterparties through the Vchasno service.
+QR коди,QR codes
+Формування документів з QR-кодами в колонтитулі,Creating documents with QR codes in the footer.
+Стан виконання документа,Execution status of a document
+Стан виконання документа відображає поточного виконавця та загальний стан,The execution status shows the current performer and the overall state.
+Зручний та безкоштовний ЕЦП провайдер,A convenient and free digital signature provider
+Провайдер ЕЦП Bitis. Рівень Г-2 ДСТСЗІ,Bitis digital signature provider. Level G-2 of the DSTSZI
+"Провайдер ЕЦП ""Інститут Інформаційних Технологій""","Digital signature provider ""Institute of Information Technologies"""
+Ваш провайдер,Your provider
+На замовлення,On request
+Установка програмного забезпечення,Software installation
+Навчання,Training
+Технічна підтримка (рік),Technical support (a year)
+Робоче місце користувача,User seat
+Ліцензія на одного користувача,Licence per user
+Робоче місце ЕЦП,Digital signature seat
+Ліцензія ЕЦП на одного користувача,Digital signature licence per user
+Оренда: користувач на місяць,Rental: user per month
+"Хмарний сервер, усі модулі, за користувача на місяць","Cloud server, all modules, per user per month"

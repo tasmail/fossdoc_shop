@@ -1,5 +1,5 @@
 {% set b = brand() %}
 <div style="height:1px;background:{{ b.primary }};margin-top:28px"></div>
 <div style="padding-top:8px;color:{{ b.muted }};font:11px Arial;text-align:center">
-	{{ b.address }} · тел. {{ b.phone }} · {{ b.email }} · {{ b.site }}
+	{{ b.address }} {{ _("· тел.") }} {{ b.phone }} · {{ b.email }} · {{ b.site }}
 </div>

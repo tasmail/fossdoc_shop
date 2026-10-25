@@ -17,6 +17,7 @@ import uuid
 from dataclasses import dataclass, field
 
 import frappe
+from frappe import _
 from lxml import etree
 
 LICENSE_NS = "http://www.foss.kharkov.ua/FossDoc/ApplicationServer/License"
@@ -80,12 +81,12 @@ class Spec:
 
 	def lines(self) -> list[str]:
 		"""The parameters in words, for the letter and the order."""
-		out = [f"Користувачів: {self.users}"]
+		out = [_("Користувачів: {0}").format(self.users)]
 		if self.ecp_users:
-			out.append(f"Користувачів з ЕЦП: {self.ecp_users}")
-		out.append(f"Версія сервера: {self.version}")
+			out.append(_("Користувачів з ЕЦП: {0}").format(self.ecp_users))
+		out.append(_("Версія сервера: {0}").format(self.version))
 		if self.tags:
-			out.append("Модулі: " + ", ".join(self.tags))
+			out.append(_("Модулі: {0}").format(", ".join(self.tags)))
 		return out
 
 
@@ -273,7 +274,7 @@ def issue_for_order(order_name: str) -> str | None:
 			"content": content,
 		}
 	).insert(ignore_permissions=True)
-	text = "<br>".join(["<b>Ліцензія FossDoc</b>", *spec.lines()])
+	text = "<br>".join(["<b>" + _("Ліцензія FossDoc") + "</b>", *spec.lines()])
 	frappe.db.set_value("Sales Order", order_name, "terms", text, update_modified=False)
 	return file.name
 
