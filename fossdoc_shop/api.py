@@ -30,3 +30,15 @@ def send_calculation(sender: str, message: str):
 			"status": "Open",
 		}
 	).insert(ignore_permissions=True)
+
+
+@frappe.whitelist()
+def update_prices():
+	"""Fetch the rate of the National Bank and make the prices in hryvnia (the deploy of the site calls it)."""
+	frappe.only_for("System Manager")
+	from fossdoc_shop import rates
+
+	result = rates.update()
+	if not result.get("new") and "error" not in result:
+		result["sync"] = rates.sync_prices()
+	return result
