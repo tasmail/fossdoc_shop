@@ -41,7 +41,6 @@ def payment_order(doc) -> dict | None:
 		"total": order.get("grand_total"),
 		"paid": doc.get("grand_total"),
 		"paid_on": doc.get("modified") or frappe.utils.nowdate(),
-		"gateway": "Stripe"
-		if "stripe" in (doc.get("payment_gateway") or "").lower()
-		else doc.get("payment_gateway"),
+		# "WayForPay-FossDoc" is a gateway of the site: the letter names the service
+		"gateway": (doc.get("payment_gateway") or "").split("-")[0] or None,
 	}
