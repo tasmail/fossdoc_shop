@@ -91,7 +91,7 @@ def make_payment_request(**args):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 	user = frappe.session.user
 	# the card is charged for this customer: without it ERPNext takes the owner of the order, who is the
-	# administrator for a cart, and Stripe refuses "Administrator" as the e-mail of the payer
+	# administrator for a cart, and a gateway refuses "Administrator" as the e-mail of the payer
 	args.setdefault("recipient_id", user)
 	frappe.set_user("Administrator")
 	try:
@@ -116,7 +116,7 @@ def _payment_request_class():
 class PaymentRequest(_payment_request_class()):
 	"""A Payment Request whose payment is booked by the administrator.
 
-	After a charge on Stripe the customer is the user of the session, and booking the payment (the Payment Entry)
+	After a charge at the gateway the customer is the user of the session, and booking the payment (the Payment Entry)
 	needs rights that a portal user does not have: the page ended with a message that the user may not select or
 	read an account. ERPNext handles the guest in the same way (it books the payment as the administrator).
 	"""

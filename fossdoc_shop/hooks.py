@@ -5,7 +5,7 @@ app_description = "FossDoc shop: calculation e-mail, commercial offer PDF and or
 app_email = "foss@foss.ua"
 app_license = "gpl-3.0"
 # installed after these: the classes and the endpoints of the shop replace theirs
-required_apps = ["erpnext", "payments", "webshop"]
+required_apps = ["erpnext", "payments", "wayforpay", "webshop"]
 
 jinja = {
 	"methods": [
