@@ -37,3 +37,6 @@ override_whitelisted_methods = {
 		"fossdoc_shop.overrides.make_payment_request"
 	),
 }
+
+# The rate of the National Bank: a new one makes the prices in hryvnia (see rates.py).
+scheduler_events = {"hourly": ["fossdoc_shop.rates.update"]}
