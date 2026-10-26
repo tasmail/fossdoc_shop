@@ -4,6 +4,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from fossdoc_shop.calculation import MARKER, describe, parse_calculation
+from fossdoc_shop.tests.seed import use_language
 
 
 def message(**payload):
@@ -74,6 +75,15 @@ class TestMoney(FrappeTestCase):
 	def test_an_amount_is_in_hryvnia_whole_without_kopecks_and_with_a_space_between_thousands(self):
 		from fossdoc_shop.calculation import money
 
+		use_language(self)
 		self.assertEqual(money(3700), "3 700 грн")
 		self.assertEqual(money(1391.6), "1 391.60 грн")
 		self.assertEqual(money(None), "0 грн")
+
+	def test_the_currency_is_named_in_the_language_of_the_request(self):
+		from fossdoc_shop.calculation import money
+
+		use_language(self, "en")
+		self.assertEqual(money(4520), "4\u00a0520\u00a0UAH")
+		use_language(self, "ru")
+		self.assertEqual(money(4520), "4\u00a0520\u00a0грн")
