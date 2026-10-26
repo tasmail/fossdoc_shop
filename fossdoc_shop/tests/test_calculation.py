@@ -29,6 +29,13 @@ class TestParseCalculation(FrappeTestCase):
 		self.assertEqual(parse_calculation(message(kind="cart"))["kind"], "cart")
 		self.assertEqual(parse_calculation(message(kind="<script>"))["kind"], "calculator")
 
+	def test_extra_seats_come_with_the_licensee_that_the_manager_checks(self):
+		calc = parse_calculation(message(kind="topup", licensee="  ТОВ Ромашка  "))
+
+		self.assertEqual((calc["kind"], calc["licensee"]), ("topup", "ТОВ Ромашка"))
+		self.assertEqual(parse_calculation(message())["licensee"], "")
+		self.assertEqual(len(parse_calculation(message(kind="topup", licensee="x" * 999))["licensee"]), 200)
+
 	def test_a_message_without_the_marker_or_with_broken_json_is_not_a_calculation(self):
 		self.assertIsNone(parse_calculation("Hello"))
 		self.assertIsNone(parse_calculation(f"{MARKER}\n{{not json"))

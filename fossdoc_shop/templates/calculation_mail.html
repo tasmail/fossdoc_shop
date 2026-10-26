@@ -5,7 +5,11 @@
 	<div style="background:{{ b.primary }};color:#fff;padding:18px 24px;font-size:20px;font-weight:bold">{{ b.brand }} <span style="font-weight:normal;font-size:13px;opacity:.85">{{ _("· система електронного документообігу") }}</span></div>
 	<div style="padding:24px;border:1px solid #eee;border-top:0">
 		<p style="margin:0 0 12px;font-size:16px"><b>{{ _("Вітаємо,") }} {{ doc.sender }}.</b></p>
+		{% if calc and calc.kind == 'topup' %}
+		<p style="margin:0 0 18px">{{ _("Цей лист містить розрахунок вартості докупівлі робочих місць для ліцензії:") }} <b>{{ calc.licensee|e }}</b>. {{ _("Ми перевіримо ліцензію й надішлемо рахунок або посилання на оплату. Комерційна пропозиція у вкладенні (PDF).") }}</p>
+		{% else %}
 		<p style="margin:0 0 18px">{{ _("Цей лист містить розрахунок вартості системи документообігу") }} {{ b.brand }} {{ _("згідно вашого вибору. Комерційна пропозиція у вкладенні (PDF). Якщо у вас виникли питання, звертайтеся до нас за консультацією.") }}</p>
+		{% endif %}
 		{% if calc %}
 		<table style="width:100%;border-collapse:collapse;font-size:14px">
 			{% for row in calc.lines %}
@@ -19,9 +23,13 @@
 				<td style="padding:12px 0;font-weight:bold;text-align:right;white-space:nowrap">{{ money(calc.total) }}</td>
 			</tr>
 		</table>
+		{% if calc.kind == 'topup' %}
+		<p style="margin:18px 0 6px;color:{{ b.muted }};font-size:12px">{{ _("Вартість вказано в гривнях, без ПДВ. Остаточну суму підтверджує рахунок.") }}</p>
+		{% else %}
 		<p style="margin:18px 0 6px;color:{{ b.muted }};font-size:12px">{{ _("Вартість вказано в гривнях, без ПДВ. Розрахунок орієнтовний: остаточна сума буде підтверджена в кошику.") }}</p>
+		{% endif %}
 		<p style="margin:24px 0;text-align:center">
-			<a href="{{ b.cart_url if calc.kind == 'cart' else b.calculator_url }}" style="background:{{ b.primary }};color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;display:inline-block;margin:0 4px">{{ _("Продовжити оформлення") }}</a>
+			{% if calc.kind != 'topup' %}<a href="{{ b.cart_url if calc.kind == 'cart' else b.calculator_url }}" style="background:{{ b.primary }};color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;display:inline-block;margin:0 4px">{{ _("Продовжити оформлення") }}</a>{% endif %}
 			<a href="mailto:{{ b.email }}" style="background:#fff;color:{{ b.primary }};border:1px solid {{ b.primary }};text-decoration:none;padding:11px 24px;border-radius:6px;display:inline-block;margin:0 4px">{{ _("Зв'яжіться з нами") }}</a>
 		</p>
 		{% else %}
