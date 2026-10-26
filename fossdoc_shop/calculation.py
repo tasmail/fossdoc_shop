@@ -14,7 +14,11 @@ from frappe import _
 
 MARKER = "Розрахунок вартості FossDoc"
 LANGUAGES = ("uk", "ru", "en")
-KINDS = ("calculator", "cart")  # where the calculation comes from: the calculator or the cart of the shop
+KINDS = (
+	"calculator",
+	"cart",
+	"topup",
+)  # where it comes from: the calculator, the cart or the extra seats form
 MAX_LINES = 120
 MAX_TEXT = 200
 
@@ -63,6 +67,8 @@ def parse_calculation(content: str | None) -> dict | None:
 	return {
 		"lang": language,
 		"kind": raw.get("kind") if raw.get("kind") in KINDS else "calculator",
+		# the licence that the extra seats are for (the manager checks it before the invoice)
+		"licensee": str(raw.get("licensee") or "").strip()[:MAX_TEXT],
 		"lines": lines,
 		"total": _number(raw.get("total")),
 		"per_month": bool(raw.get("perMonth")),

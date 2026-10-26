@@ -183,6 +183,35 @@ class TestOneSourceOfLook(FrappeTestCase):
 
 			self.assertIn(f'href="{url}"', html, kind)
 
+	def test_a_quote_of_extra_seats_names_the_licence_offers_no_order_and_leaves_out_the_features(self):
+		use_language(self)
+		seed_settings()
+		ensure_calculation_mail(overwrite=True)
+		body = {
+			"kind": "topup",
+			"licensee": "ТОВ <b>Ромашка</b>",
+			"total": 518.1,
+			"lines": [
+				{"code": "FD-SEAT", "name": "Докупівля місць", "qty": 10, "unit": 51.81, "total": 518.1}
+			],
+		}
+		doc = communication(MARKER + "\n" + json.dumps(body, ensure_ascii=False))
+
+		letter = frappe.render_template(
+			frappe.db.get_value("Notification", NOTIFICATION, "message"), {"doc": doc}
+		)
+		offer = frappe.render_template(
+			frappe.db.get_value("Print Format", PRINT_FORMAT, "html"), {"doc": doc}
+		)
+
+		self.assertIn("докупівлі робочих місць", letter)
+		self.assertIn("ТОВ &lt;b&gt;Ромашка&lt;/b&gt;", letter)
+		self.assertNotIn("Продовжити оформлення", letter)  # nothing to order: the manager sends the invoice
+		self.assertIn("518.10\u00a0грн", offer)
+		self.assertIn("Ліцензіат:", offer)
+		self.assertNotIn("Можливості системи", offer)
+		self.assertNotIn("<b>Ромашка</b>", offer)
+
 	def test_the_offer_and_the_letter_use_the_settings(self):
 		seed_settings()
 		ensure_calculation_mail()
