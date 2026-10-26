@@ -25,7 +25,7 @@ class TestCalculationMail(FrappeTestCase):
 		ensure_calculation_mail()
 
 	def test_the_notification_is_created_once_and_a_migration_keeps_the_edits_of_a_manager(self):
-		edited = "{# fossdoc_shop fossdoc-i18n #}<p>edited by a manager</p>"
+		edited = "{# fossdoc_shop fossdoc-i18n fossdoc-topup #}<p>edited by a manager</p>"
 		frappe.db.set_value("Notification", NOTIFICATION, "message", edited)
 
 		ensure_calculation_mail()
@@ -40,6 +40,16 @@ class TestCalculationMail(FrappeTestCase):
 		ensure_calculation_mail()
 
 		self.assertIn("fossdoc_shop", frappe.db.get_value("Notification", NOTIFICATION, "message"))
+
+	def test_a_letter_made_before_the_extra_seats_is_replaced_once_so_a_quote_of_them_is_read(self):
+		old = "{# fossdoc_shop fossdoc-i18n #}<p>the letter before the extra seats</p>"
+		frappe.db.set_value("Notification", NOTIFICATION, "message", old)
+
+		ensure_calculation_mail()
+
+		message = frappe.db.get_value("Notification", NOTIFICATION, "message")
+		self.assertIn("fossdoc-topup", message)
+		self.assertIn("calc.kind == 'topup'", message)
 
 	def test_the_texts_of_the_app_are_put_back_only_on_purpose(self):
 		frappe.db.set_value("Notification", NOTIFICATION, "message", "edited by a manager")

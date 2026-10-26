@@ -20,6 +20,7 @@ PAYMENT_PRINT_FORMAT = "Підтвердження оплати FossDoc"
 PAYMENT_NOTIFICATION = f"{SUBJECT_MARK} отримано"
 MAIL_MARK = "fossdoc_shop"
 LICENCE_MARK = "fossdoc-licence"  # in the letter of a payment since it carries the licence
+TOPUP_MARK = "fossdoc-topup"  # in the letter of a calculation since it knows a quote of extra seats
 HRYVNIA_MARK = "fossdoc-i18n"  # in the letters since they are translated (they replace the earlier ones once)
 
 
@@ -88,9 +89,13 @@ def ensure_calculation_mail(overwrite: bool = False):
 	"""The Notification that mails a calculation to the visitor (the PDF offer is attached)."""
 	# A letter of the dollar time has no mark of the hryvnia (a letter of the scripts of the site has no mark of
 	# the app either): the letter and the offer are replaced once.
-	legacy = frappe.db.exists("Notification", NOTIFICATION) and (
-		MAIL_MARK not in (frappe.db.get_value("Notification", NOTIFICATION, "message") or "")
-		or HRYVNIA_MARK not in (frappe.db.get_value("Notification", NOTIFICATION, "message") or "")
+	message = (
+		frappe.db.get_value("Notification", NOTIFICATION, "message")
+		if frappe.db.exists("Notification", NOTIFICATION)
+		else None
+	)
+	legacy = message is not None and any(
+		mark not in message for mark in (MAIL_MARK, HRYVNIA_MARK, TOPUP_MARK)
 	)
 	overwrite = overwrite or bool(legacy)
 	ensure_letter_head(overwrite)
