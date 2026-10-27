@@ -15,6 +15,7 @@ import hashlib
 import html
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime
 
 import frappe
 from frappe import _
@@ -27,6 +28,42 @@ SETTINGS = "FossDoc Shop Settings"
 ROOT_TAG = "FossDocApplicationServerLicense"
 LICENSE_TYPE = "FossDoc"
 LOCALIZATION = "uk-UA"
+
+# The licence of the demo: the type and the date format of the old generator, every module of the product on.
+DEMO_TYPE = "Generic"
+EXPIRE_FORMAT = "%m/%d/%Y %H:%M:%S"
+DEMO_TAGS = [
+	"History",
+	"EventLogger",
+	"DirectoryIntegration",
+	"InternetMailTransport",
+	"WebXsp",
+	"NotificationsRouting",
+	"DocumentDiscussion",
+	"CalculatedFields",
+	"OCRTesseract",
+	"EDI",
+	"Vchasno",
+	"ControllableDocument",
+	"DocumentTransferJournal",
+	"WorkStatistics",
+	"EDMS_CitizenRequests",
+	"EDMS_Projects",
+	"EDMS_Reminders",
+	"EDMS_InternalNotes",
+	"EDMS_Resolutions",
+	"SEV",
+	"SEV_NPA",
+	"EDMS_Assistants",
+	"EDMS_BarcodingDocuments",
+	"EDMS_Workflows_StoreActingUsersInWorkflowPoints",
+	"EDMS_Workflows_ShortCode_ExecutorIsWorkflowAuthor",
+	"EDMS_ApprovalWithDepartmentsHeads",
+	"EDMS_Workflows_RestrictFreeRoutingByGroups",
+	"EDMS_Workflows_ExecutionStatus",
+	"EDMS_DigitalSignature",
+	"EDMS_DigitalSignature_DocumentStatus",
+]
 
 SEAT = "FD-SEAT"
 ECP_SEAT = "FD-ECP-SEAT"
@@ -78,6 +115,7 @@ class Spec:
 	version: str
 	ecp_users: int = 0
 	tags: list[str] = field(default_factory=list)
+	expires: datetime | None = None  # a demo licence has an end that cannot be prolonged
 
 	def lines(self) -> list[str]:
 		"""The parameters in words, for the letter and the order."""
@@ -131,14 +169,20 @@ def _element(parent, name: str, text: str):
 def build_document(spec: Spec, license_id: str):
 	"""The unsigned licence, in the order of elements that the generator of the product writes."""
 	root = etree.Element(f"{{{LICENSE_NS}}}{ROOT_TAG}", nsmap={None: LICENSE_NS})
+	demo = spec.expires is not None
 	_element(root, "ID", license_id)
-	_element(root, "Type", LICENSE_TYPE)
+	_element(root, "Type", DEMO_TYPE if demo else LICENSE_TYPE)
 	_element(root, "MaxUserAccounts", str(spec.users))
 	_element(root, "SchemaExtendingAllowed", "true")
 	info = etree.SubElement(root, f"{{{LICENSE_NS}}}Info")
-	_element(info, "Commercial", "true")
-	_element(info, "LicenseOwner", spec.owner)
-	_element(info, "Localization", LOCALIZATION)
+	if demo:
+		_element(info, "LicenseOwner", spec.owner)
+		_element(info, "ExpireDate", spec.expires.strftime(EXPIRE_FORMAT))
+		_element(info, "ExpireDateNotProlongable", "true")
+	else:
+		_element(info, "Commercial", "true")
+		_element(info, "LicenseOwner", spec.owner)
+		_element(info, "Localization", LOCALIZATION)
 	if spec.ecp_users:
 		_element(info, "DigitalSignatureUsersCount", str(spec.ecp_users))
 	_element(info, "Version", spec.version)
@@ -288,3 +332,93 @@ def license_info(doc) -> dict:
 		return {"issued": False, "lines": []}
 	spec = order_spec(frappe.get_doc("Sales Order", name))
 	return {"issued": True, "lines": spec.lines() if spec else []}
+
+
+# The demo ------------------------------------------------------------------------------------------------------
+
+
+def demo_spec(owner: str, now: datetime | None = None) -> Spec | None:
+	"""The licence of the demo for a person, or None while the version or the key is not in the settings."""
+	version = license_version()
+	if not version or not license_key():
+		return None
+	row = settings()
+	months = int(row.get("demo_months") or 6)
+	start = now or frappe.utils.now_datetime()
+	return Spec(
+		owner=owner,
+		users=int(row.get("demo_users") or 5),
+		version=version,
+		ecp_users=int(row.get("demo_ecp_users") or 0),
+		tags=list(DEMO_TAGS),
+		expires=frappe.utils.add_months(start, months).replace(microsecond=0),
+	)
+
+
+def expiry_of(content: bytes) -> datetime | None:
+	"""The end of a licence file, or None when the file has none or is not a licence."""
+	try:
+		root = etree.fromstring(content.removeprefix(b"\xef\xbb\xbf"))
+		text = root.findtext(f"{{{LICENSE_NS}}}Info/{{{LICENSE_NS}}}ExpireDate")
+		return datetime.strptime(text, EXPIRE_FORMAT) if text else None
+	except (etree.XMLSyntaxError, ValueError):
+		return None
+
+
+def demo_license(lead: str, owner: str, now: datetime | None = None) -> dict | None:
+	"""The demo licence of a Lead: the one it has while it lasts (the demo cannot be prolonged by asking again),
+	else a new one, which is attached to the Lead (private) with a note. None when the shop cannot sign one."""
+	now = now or frappe.utils.now_datetime()
+	files = frappe.get_all(
+		"File",
+		# Frappe names a second file of a document License<hash>.xml, so every licence of the Lead is found by the pattern
+		filters={
+			"attached_to_doctype": "Lead",
+			"attached_to_name": lead,
+			"file_name": ["like", "License%.xml"],
+		},
+		fields=["name"],
+		order_by="creation desc",
+		limit_page_length=0,
+	)
+	for row in files:
+		content = frappe.get_doc("File", row.name).get_content()
+		content = content.encode() if isinstance(content, str) else content
+		expires = expiry_of(content)
+		if expires and expires > now:
+			root = etree.fromstring(content.removeprefix(b"\xef\xbb\xbf"))
+			ns = {"l": LICENSE_NS}
+			return {
+				"content": content,
+				"expires": expires,
+				"users": int(root.findtext("l:MaxUserAccounts", namespaces=ns) or 0),
+				"owner": root.findtext("l:Info/l:LicenseOwner", namespaces=ns) or owner,
+				"new": False,
+			}
+	spec = demo_spec(owner, now)
+	if spec is None:
+		return None
+	license_id = str(uuid.uuid4())
+	content = generate(spec, license_key(), license_id)
+	frappe.get_doc(
+		{
+			"doctype": "File",
+			"file_name": LICENSE_FILE,
+			"attached_to_doctype": "Lead",
+			"attached_to_name": lead,
+			"is_private": 1,
+			"content": content,
+		}
+	).insert(ignore_permissions=True)
+	frappe.get_doc("Lead", lead).add_comment(
+		"Comment",
+		f"Демо-ліцензія FossDoc {spec.version}: {spec.owner}, користувачів {spec.users}, "
+		f"до {spec.expires.strftime(EXPIRE_FORMAT)}, ID {license_id}",
+	)
+	return {
+		"content": content,
+		"expires": spec.expires,
+		"users": spec.users,
+		"owner": spec.owner,
+		"new": True,
+	}

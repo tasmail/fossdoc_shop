@@ -1,5 +1,6 @@
 import base64
 import hashlib
+from datetime import datetime, timedelta
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -195,3 +196,126 @@ class TestIssueForOrder(FrappeTestCase):
 				"issued"
 			]
 		)
+
+
+class TestDemoLicence(FrappeTestCase):
+	"""The licence that the form of the demo download mails: the one of the sample of the old generator."""
+
+	def setUp(self):
+		from cryptography.hazmat.primitives.asymmetric import rsa
+
+		from fossdoc_shop.tests.seed import seed_settings
+
+		seed_settings(demo_users=5, demo_ecp_users=1, demo_months=6)
+		self.private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+		self.key = key_xml(self.private_key)
+		self.originals = (licensing.license_version, licensing.license_key)
+		licensing.license_version, licensing.license_key = (lambda: "7.4"), (lambda: self.key)
+		self.lead = frappe.get_doc(
+			{
+				"doctype": "Lead",
+				"first_name": "Demo",
+				"email_id": "demo-licence@example.org",
+				"status": "Lead",
+			}
+		).insert(ignore_permissions=True)
+		self.addCleanup(frappe.delete_doc, "Lead", self.lead.name, force=True)
+
+	def tearDown(self):
+		licensing.license_version, licensing.license_key = self.originals
+
+	def parse(self, data):
+		return etree.fromstring(data[3:], etree.XMLParser(remove_blank_text=True))
+
+	def test_the_document_is_the_one_of_the_sample_a_demo_type_an_end_that_cannot_be_prolonged_and_every_module(
+		self,
+	):
+		now = datetime(2026, 10, 25, 11, 4, 41)
+
+		spec = licensing.demo_spec("Іван Петренко", now)
+		data = licensing.generate(spec, self.key, "2acaed4e-d440-4a63-9a1f-b48501b5f7b4")
+
+		root = self.parse(data)
+		ns = {"l": licensing.LICENSE_NS}
+		self.assertEqual(
+			[etree.QName(child).localname for child in root][:4],
+			["ID", "Type", "MaxUserAccounts", "SchemaExtendingAllowed"],
+		)
+		self.assertEqual(root.findtext("l:Type", namespaces=ns), "Generic")
+		self.assertEqual(root.findtext("l:MaxUserAccounts", namespaces=ns), "5")
+		info = [etree.QName(child).localname for child in root.find("l:Info", ns)]
+		self.assertEqual(
+			info[:5],
+			[
+				"LicenseOwner",
+				"ExpireDate",
+				"ExpireDateNotProlongable",
+				"DigitalSignatureUsersCount",
+				"Version",
+			],
+		)
+		self.assertEqual(info[5:], licensing.DEMO_TAGS)
+		self.assertNotIn("Commercial", info)
+		self.assertNotIn("Localization", info)
+		self.assertEqual(root.findtext("l:Info/l:LicenseOwner", namespaces=ns), "Іван Петренко")
+		self.assertEqual(root.findtext("l:Info/l:ExpireDate", namespaces=ns), "04/25/2027 11:04:41")
+		self.assertEqual(root.findtext("l:Info/l:ExpireDateNotProlongable", namespaces=ns), "true")
+		self.assertEqual(root.findtext("l:Info/l:DigitalSignatureUsersCount", namespaces=ns), "1")
+		self.assertEqual(root.findtext("l:Info/l:Version", namespaces=ns), "7.4")
+
+	def test_the_demo_is_signed_the_way_the_server_checks_it(self):
+		from cryptography.hazmat.primitives import hashes
+		from cryptography.hazmat.primitives.asymmetric import padding
+
+		data = licensing.generate(licensing.demo_spec("Тест"), self.key)
+
+		root = self.parse(data)
+		ns = {"d": licensing.DSIG_NS}
+		signature = root.find("d:Signature", ns)
+		value = base64.b64decode(signature.findtext("d:SignatureValue", namespaces=ns))
+		canonical = etree.tostring(signature.find("d:SignedInfo", ns), method="c14n")
+		self.private_key.public_key().verify(value, canonical, padding.PKCS1v15(), hashes.SHA1())
+
+	def test_the_numbers_come_from_the_settings_and_not_from_the_code(self):
+		from fossdoc_shop.tests.seed import seed_settings
+
+		seed_settings(demo_users=12, demo_ecp_users=0, demo_months=3)
+
+		spec = licensing.demo_spec("Тест", datetime(2026, 1, 31, 10, 0, 0))
+
+		self.assertEqual((spec.users, spec.ecp_users), (12, 0))
+		self.assertEqual(spec.expires, datetime(2026, 4, 30, 10, 0, 0))
+
+	def test_without_the_version_or_the_key_the_shop_signs_nothing(self):
+		licensing.license_key = lambda: ""
+
+		self.assertIsNone(licensing.demo_spec("Тест"))
+		self.assertIsNone(licensing.demo_license(self.lead.name, "Тест"))
+
+	def test_a_lead_gets_a_licence_once_while_it_lasts_and_a_new_one_after_it_ends(self):
+		now = datetime(2026, 10, 25, 11, 0, 0)
+
+		first = licensing.demo_license(self.lead.name, "Іван Петренко", now)
+		again = licensing.demo_license(self.lead.name, "Інше Ім'я", now + timedelta(days=100))
+		later = licensing.demo_license(self.lead.name, "Іван Петренко", now + timedelta(days=200))
+
+		self.assertTrue(first["new"])
+		self.assertFalse(again["new"])
+		self.assertEqual(again["content"], first["content"])  # the same licence, the same end: no prolonging
+		self.assertEqual(again["owner"], "Іван Петренко")
+		self.assertTrue(later["new"])
+		self.assertNotEqual(later["content"], first["content"])
+		files = frappe.get_all(
+			"File",
+			filters={"attached_to_doctype": "Lead", "attached_to_name": self.lead.name},
+			fields=["file_name", "is_private"],
+		)
+		self.assertEqual([f.is_private for f in files], [1, 1])
+		self.assertTrue(all(f.file_name.startswith("License") for f in files))
+		# the renewal is found again (its file has another name): a request after it gets it and no third one is made
+		renewed = licensing.demo_license(self.lead.name, "Іван Петренко", now + timedelta(days=210))
+		self.assertEqual((renewed["new"], renewed["content"]), (False, later["content"]))
+		comments = frappe.get_all(
+			"Comment", filters={"reference_name": self.lead.name, "content": ["like", "Демо-ліцензія%"]}
+		)
+		self.assertEqual(len(comments), 2)
