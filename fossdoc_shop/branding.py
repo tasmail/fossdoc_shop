@@ -12,18 +12,22 @@ COLOR_FIELDS = ("primary", "tint", "line", "text", "muted", "footer")
 
 
 def brand() -> dict:
-	"""Colours and requisites for the templates (the Jinja method `brand`)."""
+	"""Colours and requisites for the templates (the Jinja method `brand`).
+
+	The name and the address of the seller go through the translation, so a letter in another language prints them
+	in that language (the deploy of the site adds the Translation records).
+	"""
 	settings = frappe.get_cached_doc(SETTINGS)
 	data = {name: settings.get(f"color_{name}") or "" for name in COLOR_FIELDS}
 	site = (settings.site_url or "").rstrip("/")
 	data.update(
 		{
 			"brand": settings.brand_name or "",
-			"company": settings.seller_name or "",
-			"legal_name": settings.legal_name or "",
+			"company": frappe._(settings.seller_name) if settings.seller_name else "",
+			"legal_name": frappe._(settings.legal_name) if settings.legal_name else "",
 			"email": settings.sales_email or "",
 			"phone": settings.phone or "",
-			"address": settings.address or "",
+			"address": frappe._(settings.address) if settings.address else "",
 			"site": site,
 			"calculator_url": site + (settings.calculator_path or ""),
 			"cart_url": site + (settings.cart_path or ""),
