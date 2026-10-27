@@ -143,6 +143,26 @@
    "description": "The private key of the version in the format RSAKeyValue; it is stored encrypted"
   },
   {
+   "fieldname": "demo_users",
+   "fieldtype": "Int",
+   "label": "Users of the demo licence",
+   "default": "5",
+   "description": "The number of active users in the licence that the form of the demo download mails"
+  },
+  {
+   "fieldname": "demo_ecp_users",
+   "fieldtype": "Int",
+   "label": "Digital signature users of the demo licence",
+   "default": "1"
+  },
+  {
+   "fieldname": "demo_months",
+   "fieldtype": "Int",
+   "label": "Months of the demo licence",
+   "default": "6",
+   "description": "The licence of the demo is not prolongable; an address that asks again gets the same licence until it expires"
+  },
+  {
    "fieldname": "prices_section",
    "fieldtype": "Section Break",
    "label": "Prices in hryvnia"
@@ -215,6 +235,9 @@
   "license_section",
   "license_version",
   "license_signing_key",
+  "demo_users",
+  "demo_ecp_users",
+  "demo_months",
   "prices_section",
   "master_price_list",
   "uah_price_list",

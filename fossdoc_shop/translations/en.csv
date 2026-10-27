@@ -148,3 +148,4 @@ QR коди,QR codes
 Впровадження й навчання,Implementation and training
 Індивідуальна розробка,Custom development
 Технічна підтримка,Technical support
+"У вкладенні демонстраційна ліцензія License.xml для {0}: користувачів — {1}, дійсна до {2}.","The demo licence License.xml for {0} is attached: {1} users, valid until {2}."

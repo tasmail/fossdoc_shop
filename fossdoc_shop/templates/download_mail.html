@@ -1,4 +1,4 @@
-{# fossdoc_shop: the letter with the links to the demo version #}
+{# fossdoc_shop: the letter with the links to the demo version and its licence #}
 <div style="font-family:Arial,Helvetica,sans-serif;color:{{ b.text }};max-width:640px;margin:0 auto">
 	<div style="background:{{ b.primary }};color:#fff;padding:18px 24px;font-size:20px;font-weight:bold">{{ b.brand }} <span style="font-weight:normal;font-size:13px;opacity:.85">{{ _("· демо-версія") }} {{ version }}</span></div>
 	<div style="padding:24px;border:1px solid #eee;border-top:0">
@@ -12,6 +12,9 @@
 			</tr>
 			{% endfor %}
 		</table>
+		{% if license %}
+		<p style="margin:18px 0 0">{{ _("У вкладенні демонстраційна ліцензія License.xml для {0}: користувачів — {1}, дійсна до {2}.").format(license.owner|e, license.users, license.expires) }}</p>
+		{% endif %}
 		<p style="margin:18px 0 0">{{ _("Перед встановленням рекомендуємо ознайомитися з розділом «Інсталяція системи» та статтею «Швидкий старт» у документації. Якщо посилання не спрацювало, відповідайте на цей лист і ми надішлемо нове.") }}</p>
 		<p style="margin:24px 0 0">{{ _("З повагою,") }}<br>{{ b.legal_name }}</p>
 	</div>

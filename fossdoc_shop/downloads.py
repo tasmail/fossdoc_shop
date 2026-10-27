@@ -19,6 +19,7 @@ from frappe.rate_limiter import rate_limit
 from frappe.utils import validate_email_address
 from werkzeug.exceptions import HTTPException
 
+from fossdoc_shop import licensing
 from fossdoc_shop.branding import brand
 
 GROUP = "FossDoc Downloads"
@@ -128,7 +129,8 @@ def request_download(full_name: str, email: str, phone: str = "", website: str =
 	if release is None:
 		frappe.throw(_("The demo version is not available now"), frappe.ValidationError)
 	version = ".".join(map(str, release["version"]))
-	ensure_lead(full_name, email, (phone or "").strip(), version)
+	lead = ensure_lead(full_name, email, (phone or "").strip(), version)
+	demo = licensing.demo_license(lead.name, full_name)
 	data = brand()
 	links = [
 		{"name": row["file_name"], "size": size_text(row["file_size"]), "url": link(row["name"], email)}
@@ -139,8 +141,16 @@ def request_download(full_name: str, email: str, phone: str = "", website: str =
 		subject=f"{_('Демо-версія')} {data['brand']} {version}",
 		message=frappe.render_template(
 			"fossdoc_shop/" + MAIL_TEMPLATE,
-			{"name": full_name, "version": version, "links": links, "hours": LINK_HOURS, "b": data},
+			{
+				"name": full_name,
+				"version": version,
+				"links": links,
+				"hours": LINK_HOURS,
+				"b": data,
+				"license": demo and {**demo, "expires": demo["expires"].strftime("%d.%m.%Y")},
+			},
 		),
+		attachments=[{"fname": licensing.LICENSE_FILE, "fcontent": demo["content"]}] if demo else None,
 		reply_to=formataddr((data["company"], data["email"])) if data["email"] else None,
 		now=True,
 	)
