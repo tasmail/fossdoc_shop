@@ -2,7 +2,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from fossdoc_shop.branding import brand
-from fossdoc_shop.tests.seed import SETTINGS, seed_settings
+from fossdoc_shop.tests.seed import SETTINGS, seed_settings, use_language
 
 
 class TestBranding(FrappeTestCase):
@@ -17,6 +17,24 @@ class TestBranding(FrappeTestCase):
 		self.assertEqual(data["calculator_url"], "https://shop.test.example/calc")
 		self.assertEqual(data["cart_url"], "https://shop.test.example/basket")
 		self.assertEqual(data["cc"], SETTINGS["sales_email"])
+
+	def test_the_seller_is_named_in_the_language_of_the_letter_when_the_site_has_the_translation(self):
+		seed_settings()
+		doc = frappe.get_doc(
+			{
+				"doctype": "Translation",
+				"language": "en",
+				"source_text": SETTINGS["seller_name"],
+				"translated_text": "Test Seller Enterprise",
+			}
+		).insert(ignore_permissions=True)
+		self.addCleanup(frappe.delete_doc, "Translation", doc.name, force=True)
+		frappe.clear_cache()
+		use_language(self, "en")
+
+		self.assertEqual(brand()["company"], "Test Seller Enterprise")
+		use_language(self, "uk")
+		self.assertEqual(brand()["company"], SETTINGS["seller_name"])
 
 	def test_a_change_of_a_setting_is_seen_at_once(self):
 		seed_settings()
