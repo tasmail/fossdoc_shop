@@ -91,12 +91,15 @@ def size_text(size: int | None) -> str:
 	)
 
 
-def ensure_lead(full_name: str, email: str, phone: str, version: str):
+def ensure_lead(full_name: str, email: str, phone: str, version: str, organization: str = ""):
 	"""The person of the request is a Lead of the CRM; a known address gets a note and no second Lead."""
 	name = frappe.db.get_value("Lead", {"email_id": email}, "name")
-	note = f"Запит демо-версії FossDoc {version}"
+	note = f"Запит демо-версії FossDoc {version}" + (f", {organization}" if organization else "")
 	if name:
 		lead = frappe.get_doc("Lead", name)
+		if organization and not lead.get("company_name"):
+			lead.company_name = organization
+			lead.save(ignore_permissions=True)
 	else:
 		first, _sep, last = full_name.partition(" ")
 		lead = frappe.get_doc(
@@ -105,6 +108,7 @@ def ensure_lead(full_name: str, email: str, phone: str, version: str):
 				"first_name": first,
 				"last_name": last.strip() or None,
 				"email_id": email,
+				"company_name": organization or None,
 				"mobile_no": phone or None,
 				"status": "Lead",
 			}
@@ -115,7 +119,9 @@ def ensure_lead(full_name: str, email: str, phone: str, version: str):
 
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=10, seconds=60 * 60)
-def request_download(full_name: str, email: str, phone: str = "", website: str = "", lang: str = ""):
+def request_download(
+	full_name: str, email: str, phone: str = "", website: str = "", lang: str = "", organization: str = ""
+):
 	"""Store the request as a Lead and mail the links of the newest release (a filled `website` is a robot)."""
 	if website:
 		return {"sent": True}
@@ -125,12 +131,16 @@ def request_download(full_name: str, email: str, phone: str = "", website: str =
 	full_name = (full_name or "").strip()
 	if not full_name:
 		frappe.throw(_("Enter your name"), frappe.ValidationError)
+	organization = " ".join((organization or "").split())[:140]
+	if not organization:
+		frappe.throw(_("Enter your organisation"), frappe.ValidationError)
 	release = current_release()
 	if release is None:
 		frappe.throw(_("The demo version is not available now"), frappe.ValidationError)
 	version = ".".join(map(str, release["version"]))
-	lead = ensure_lead(full_name, email, (phone or "").strip(), version)
-	demo = licensing.demo_license(lead.name, full_name)
+	lead = ensure_lead(full_name, email, (phone or "").strip(), version, organization)
+	# the licence is for the organisation that asked for it
+	demo = licensing.demo_license(lead.name, organization)
 	data = brand()
 	links = [
 		{"name": row["file_name"], "size": size_text(row["file_size"]), "url": link(row["name"], email)}

@@ -75,12 +75,12 @@ class TestDemoLetter(FrappeTestCase):
 		for name in frappe.get_all("Lead", filters={"email_id": self.email}, pluck="name"):
 			frappe.delete_doc("Lead", name, force=True)
 
-	def request(self):
+	def request(self, organization="ТОВ Ромашка", name="Іван Петренко"):
 		with patch("frappe.sendmail") as sendmail:
-			downloads.request_download("Іван Петренко", self.email, lang="uk")
+			downloads.request_download(name, self.email, lang="uk", organization=organization)
 		return sendmail.call_args.kwargs
 
-	def test_the_letter_carries_the_licence_for_the_typed_name_and_the_links(self):
+	def test_the_letter_carries_the_licence_for_the_typed_organisation_and_the_links(self):
 		mail = self.request()
 
 		(attachment,) = mail["attachments"]
@@ -88,20 +88,31 @@ class TestDemoLetter(FrappeTestCase):
 		owner = etree.fromstring(attachment["fcontent"][3:]).findtext(
 			f"{{{licensing.LICENSE_NS}}}Info/{{{licensing.LICENSE_NS}}}LicenseOwner"
 		)
-		self.assertEqual(owner, "Іван Петренко")
+		self.assertEqual(owner, "ТОВ Ромашка")  # the organisation, not the name of the person
 		self.assertIn("License.xml", mail["message"])
-		self.assertIn("Іван Петренко", mail["message"])
+		self.assertIn("ТОВ Ромашка", mail["message"])
 		self.assertIn("FossDoc_UA.exe", mail["message"])
 
 	def test_a_second_request_gets_the_same_licence_and_the_lead_keeps_it(self):
 		first = self.request()["attachments"][0]["fcontent"]
-		second = self.request()["attachments"][0]["fcontent"]
+		second = self.request(organization="Інша організація", name="Інше Ім'я")["attachments"][0]["fcontent"]
 
 		self.assertEqual(first, second)
 		lead = frappe.db.get_value("Lead", {"email_id": self.email}, "name")
 		self.assertEqual(
 			frappe.db.count("File", {"attached_to_doctype": "Lead", "attached_to_name": lead}), 1
 		)
+
+	def test_the_organisation_is_required_and_goes_to_the_lead(self):
+		with self.assertRaises(frappe.ValidationError):
+			downloads.request_download("Іван Петренко", self.email, lang="uk", organization="  ")
+
+		self.request()
+
+		lead = frappe.db.get_value(
+			"Lead", {"email_id": self.email}, ["company_name", "first_name"], as_dict=True
+		)
+		self.assertEqual((lead.company_name, lead.first_name), ("ТОВ Ромашка", "Іван"))
 
 	def test_without_the_key_the_letter_has_the_links_and_no_licence(self):
 		licensing.license_key = lambda: ""
