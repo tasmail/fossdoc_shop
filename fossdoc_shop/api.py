@@ -1,4 +1,4 @@
-"""The endpoint that the calculator of the site calls to mail a calculation to the visitor."""
+"""The endpoints that the calculator of the site calls: its prices and the mail of a calculation to the visitor."""
 
 import frappe
 from frappe import _
@@ -33,6 +33,14 @@ def send_calculation(sender: str, message: str):
 			"status": "Open",
 		}
 	).insert(ignore_permissions=True)
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+def prices():
+	"""The prices in hryvnia that the calculator of the site shows (see rates.price_sheet)."""
+	from fossdoc_shop import rates
+
+	return rates.price_sheet()
 
 
 @frappe.whitelist()

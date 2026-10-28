@@ -111,3 +111,50 @@ class TestUahPrices(FrappeTestCase):
 
 		self.assertIn("error", result)
 		self.assertEqual(self.price(), 4150)
+
+	def test_the_calculator_reads_the_prices_and_the_quantity_rules_of_the_hryvnia_list(self):
+		# the rules are put after the list is made: making it drops the rules that the dollar list has not
+		rates.sync_prices(41.5)
+		frappe.db.delete("Pricing Rule", {"for_price_list": TARGET})
+		for min_qty, max_qty, rate in ((6, 0, 3900), (1, 5, 4000)):
+			frappe.get_doc(
+				{
+					"doctype": "Pricing Rule",
+					"title": f"Test rate rule {min_qty}",
+					"apply_on": "Item Code",
+					"items": [{"item_code": ITEM}],
+					"selling": 1,
+					"currency": "UAH",
+					"for_price_list": TARGET,
+					"price_or_product_discount": "Price",
+					"rate_or_discount": "Rate",
+					"rate": rate,
+					"min_qty": min_qty,
+					"max_qty": max_qty,
+				}
+			).insert()
+		frappe.cache().delete_value(rates.SHEET_KEY)
+
+		sheet = rates.price_sheet()
+
+		self.assertEqual(sheet["items"][ITEM], 4150)
+		self.assertEqual(sheet["slabs"][ITEM], [[1, 5, 4000], [6, 0, 3900]])
+
+	def test_a_new_rate_reaches_the_calculator_at_once(self):
+		rates.sync_prices(41.5)
+		self.assertEqual(rates.price_sheet()["items"][ITEM], 4150)
+
+		rates.sync_prices(42)
+
+		self.assertEqual(rates.price_sheet()["items"][ITEM], 4200)
+
+	def test_a_guest_may_read_the_prices(self):
+		from fossdoc_shop import api
+
+		rates.sync_prices(41.5)
+		frappe.set_user("Guest")
+		try:
+			frappe.is_whitelisted(api.prices)  # raises for a method that a guest may not call
+			self.assertEqual(api.prices()["items"][ITEM], 4150)
+		finally:
+			frappe.set_user("Administrator")
