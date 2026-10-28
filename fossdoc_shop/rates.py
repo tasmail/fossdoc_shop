@@ -17,6 +17,9 @@ FROM_CURRENCY = "USD"
 TO_CURRENCY = "UAH"
 SUFFIX = " UAH"  # the title of a pricing rule of the UAH list is the title of the USD rule and this
 TIMEOUT = 20
+# The prices of the UAH list as the calculator of the site reads them; dropped when the list is made again.
+SHEET_KEY = "fossdoc_shop:price_sheet"
+SHEET_SECONDS = 600  # a price edited by hand in the UAH list reaches the calculator after this time
 
 
 def fetch_nbu_rate(currency: str = FROM_CURRENCY) -> tuple[float, datetime.date]:
@@ -193,11 +196,48 @@ def sync_prices(rate: float | None = None) -> dict:
 		rate = stored[0]
 	step = float(config.rounding_step or 1)
 	ensure_price_list(config.uah_price_list)
-	return {
+	result = {
 		"rate": rate,
 		"items": sync_item_prices(config.master_price_list, config.uah_price_list, rate, step),
 		"rules": sync_pricing_rules(config.master_price_list, config.uah_price_list, rate, step),
 	}
+	frappe.cache().delete_value(SHEET_KEY)
+	return result
+
+
+def price_sheet() -> dict:
+	"""The prices of the UAH list for the calculator of the site: {"items": {code: price}, "slabs": {code: rows}}.
+
+	The page of the calculator embeds the prices of the day it was published; it reads these on opening, so it
+	shows the prices the cart charges. A row of the slabs is (min qty, max qty, price) of a quantity rule; max 0
+	means no upper limit, as in the Pricing Rule.
+	"""
+	cached = frappe.cache().get_value(SHEET_KEY)
+	if cached is not None:
+		return cached
+	target = settings().uah_price_list
+	sheet = {"items": {}, "slabs": {}}
+	if target:
+		sheet["items"] = {
+			row.item_code: row.price_list_rate
+			for row in frappe.get_all(
+				"Item Price",
+				filters={"price_list": target, "selling": 1},
+				fields=["item_code", "price_list_rate"],
+				limit_page_length=0,
+			)
+		}
+		for row in frappe.get_all(
+			"Pricing Rule",
+			filters={"for_price_list": target, "disable": 0, "apply_on": "Item Code"},
+			fields=["`tabPricing Rule Item Code`.item_code as item_code", "min_qty", "max_qty", "rate"],
+			limit_page_length=0,
+		):
+			sheet["slabs"].setdefault(row.item_code, []).append([row.min_qty, row.max_qty, row.rate])
+		for rows in sheet["slabs"].values():
+			rows.sort()
+	frappe.cache().set_value(SHEET_KEY, sheet, expires_in_sec=SHEET_SECONDS)
+	return sheet
 
 
 def update() -> dict:
