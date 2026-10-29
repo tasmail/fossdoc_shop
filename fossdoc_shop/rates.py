@@ -201,7 +201,10 @@ def sync_prices(rate: float | None = None) -> dict:
 		"items": sync_item_prices(config.master_price_list, config.uah_price_list, rate, step),
 		"rules": sync_pricing_rules(config.master_price_list, config.uah_price_list, rate, step),
 	}
+	# dropped now (a request in this transaction reads the new prices) and again after the commit: a request between
+	# the two would read the old committed prices and keep them for ten minutes
 	frappe.cache().delete_value(SHEET_KEY)
+	frappe.db.after_commit.add(lambda: frappe.cache().delete_value(SHEET_KEY))
 	return result
 
 
@@ -229,15 +232,36 @@ def price_sheet() -> dict:
 		}
 		for row in frappe.get_all(
 			"Pricing Rule",
-			filters={"for_price_list": target, "disable": 0, "apply_on": "Item Code"},
-			fields=["`tabPricing Rule Item Code`.item_code as item_code", "min_qty", "max_qty", "rate"],
+			filters={"for_price_list": target, "disable": 0, "selling": 1, "apply_on": "Item Code"},
+			fields=[
+				"`tabPricing Rule Item Code`.item_code as item_code",
+				"min_qty",
+				"max_qty",
+				"rate",
+				"valid_from",
+				"valid_upto",
+			],
 			limit_page_length=0,
 		):
+			if not in_force(row):
+				continue
 			sheet["slabs"].setdefault(row.item_code, []).append([row.min_qty, row.max_qty, row.rate])
 		for rows in sheet["slabs"].values():
 			rows.sort()
-	frappe.cache().set_value(SHEET_KEY, sheet, expires_in_sec=SHEET_SECONDS)
+	if sheet[
+		"items"
+	]:  # an empty sheet (no list yet, or one being made) is not kept: the next request asks again
+		frappe.cache().set_value(SHEET_KEY, sheet, expires_in_sec=SHEET_SECONDS)
 	return sheet
+
+
+def in_force(rule, today=None) -> bool:
+	"""A pricing rule that applies today (the cart ignores one outside of its dates, so the calculator does too)."""
+	today = today or frappe.utils.getdate()
+	start, end = rule.get("valid_from"), rule.get("valid_upto")
+	return (not start or frappe.utils.getdate(start) <= today) and (
+		not end or frappe.utils.getdate(end) >= today
+	)
 
 
 def update() -> dict:
