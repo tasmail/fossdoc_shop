@@ -31,7 +31,9 @@ after_migrate = [
 ]
 
 doc_events = {
-	"Email Queue": {"before_insert": "fossdoc_shop.overrides.set_reply_to"},
+	"Email Queue": {
+		"before_insert": ["fossdoc_shop.overrides.set_reply_to", "fossdoc_shop.overrides.name_the_offer"]
+	},
 	"Customer": {"before_insert": "fossdoc_shop.orders.set_language"},
 	"User": {"before_insert": "fossdoc_shop.orders.set_language"},
 	"Quotation": {

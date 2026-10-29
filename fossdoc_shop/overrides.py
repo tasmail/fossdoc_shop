@@ -1,6 +1,7 @@
 """Hooks of the app: the e-mail of a calculation and the download of a PDF."""
 
 import email
+import json
 from email import policy
 from email.utils import formataddr
 
@@ -10,6 +11,7 @@ from frappe import _
 from fossdoc_shop.branding import brand
 from fossdoc_shop.calculation import MARKER
 from fossdoc_shop.payment import SUBJECT_MARK
+from fossdoc_shop.setup import PRINT_FORMAT
 
 # The documents of the letters whose replies go to sales: a calculation (Communication) and a payment.
 LETTERS = ("Communication", "Payment Request")
@@ -33,6 +35,25 @@ def set_reply_to(doc, method=None):
 	del message["Reply-To"]
 	message["Reply-To"] = formataddr((data["company"], data["email"]))
 	doc.message = message.as_string()
+
+
+def name_the_offer(doc, method=None):
+	"""The PDF offer of a calculation is called "Комерційна_пропозиція_FossDoc.pdf" in the language of the letter.
+
+	Frappe names a printed attachment after its document, and a Communication has a random name. It also removes the
+	spaces from a given name, so the words are joined by underscores. The offer is found by its print format.
+	"""
+	if doc.reference_doctype != "Communication" or not doc.attachments:
+		return
+	attachments = json.loads(doc.attachments)
+	changed = False
+	for attachment in attachments:
+		if attachment.get("print_format_attachment") == 1 and attachment.get("print_format") == PRINT_FORMAT:
+			name = _("Комерційна пропозиція {0}", lang=attachment.get("lang") or frappe.local.lang)
+			attachment["file_name"] = name.format(brand()["brand"] or "FossDoc").replace(" ", "_")
+			changed = True
+	if changed:
+		doc.attachments = json.dumps(attachments)
 
 
 NOTHING = ("", "none", "null", "undefined")

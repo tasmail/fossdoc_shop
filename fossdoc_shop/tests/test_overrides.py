@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -5,7 +6,8 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from fossdoc_shop.calculation import MARKER
-from fossdoc_shop.overrides import _clean, download_pdf, make_payment_request, set_reply_to
+from fossdoc_shop.overrides import _clean, download_pdf, make_payment_request, name_the_offer, set_reply_to
+from fossdoc_shop.setup import PRINT_FORMAT
 from fossdoc_shop.tests.seed import seed_settings
 
 MIME = "From: ERP CRM <noreply@example.org>\nTo: a@example.org\nSubject: {subject}\nReply-To: noreply@example.org\n\nbody\n"
@@ -35,6 +37,50 @@ class TestSetReplyTo(FrappeTestCase):
 
 		self.assertEqual(other.message, MIME.format(subject="Password reset"))
 		self.assertEqual(wrong_doctype.message, MIME.format(subject=MARKER))
+
+
+def printed(print_format=PRINT_FORMAT, lang="uk", doctype="Communication"):
+	attachment = {
+		"print_format_attachment": 1,
+		"doctype": doctype,
+		"name": "a1b2c3d4e5",
+		"print_format": print_format,
+		"lang": lang,
+	}
+	return frappe._dict(reference_doctype=doctype, attachments=json.dumps([attachment]))
+
+
+def file_names(doc):
+	return [attachment.get("file_name") for attachment in json.loads(doc.attachments)]
+
+
+class TestNameTheOffer(FrappeTestCase):
+	def setUp(self):
+		seed_settings()
+
+	def test_the_offer_is_named_in_the_language_of_the_letter_with_underscores(self):
+		for lang, name in (
+			("uk", "Комерційна_пропозиція_TestDoc"),
+			("ru", "Коммерческое_предложение_TestDoc"),
+			("en", "TestDoc_commercial_offer"),
+		):
+			doc = printed(lang=lang)
+
+			name_the_offer(doc)
+
+			self.assertEqual(file_names(doc), [name], lang)
+
+	def test_other_prints_and_letters_are_left_alone(self):
+		other_format = printed(print_format="Standard")
+		payment = printed(doctype="Payment Request")
+		without = frappe._dict(reference_doctype="Communication", attachments=None)
+
+		for doc in (other_format, payment, without):
+			name_the_offer(doc)
+
+		self.assertEqual(file_names(other_format), [None])
+		self.assertEqual(file_names(payment), [None])
+		self.assertIsNone(without.attachments)
 
 
 class TestDownloadPdf(FrappeTestCase):
