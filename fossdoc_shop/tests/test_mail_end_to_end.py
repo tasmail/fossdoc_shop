@@ -95,3 +95,7 @@ class TestMailEndToEnd(FrappeTestCase):
 		self.assertIn("Резолюції", letter["HTML"])
 		self.assertIn("200\u00a0грн", letter["HTML"])
 		self.assertEqual([a["ContentType"] for a in letter["Attachments"]], ["application/pdf"])
+		# the offer has a name and not the random name of the Communication
+		self.assertEqual(
+			[a["FileName"] for a in letter["Attachments"]], ["Комерційна_пропозиція_TestDoc.pdf"]
+		)
