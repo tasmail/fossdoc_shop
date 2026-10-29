@@ -36,6 +36,7 @@ def send_calculation(sender: str, message: str):
 
 
 @frappe.whitelist(allow_guest=True, methods=["GET"])
+@rate_limit(limit=120, seconds=60)
 def prices():
 	"""The prices in hryvnia that the calculator of the site shows (see rates.price_sheet)."""
 	from fossdoc_shop import rates

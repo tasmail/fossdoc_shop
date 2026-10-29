@@ -158,3 +158,62 @@ class TestUahPrices(FrappeTestCase):
 			self.assertEqual(api.prices()["items"][ITEM], 4150)
 		finally:
 			frappe.set_user("Administrator")
+
+	def make_rule(self, min_qty, rate, **extra):
+		return frappe.get_doc(
+			{
+				"doctype": "Pricing Rule",
+				"title": f"Test rate rule {min_qty} {rate}",
+				"apply_on": "Item Code",
+				"items": [{"item_code": ITEM}],
+				"selling": 1,
+				"currency": "UAH",
+				"for_price_list": TARGET,
+				"price_or_product_discount": "Price",
+				"rate_or_discount": "Rate",
+				"rate": rate,
+				"min_qty": min_qty,
+				"max_qty": 0,
+				**extra,
+			}
+		).insert()
+
+	def test_a_rule_that_the_cart_does_not_apply_today_is_not_shown_by_the_calculator(self):
+		rates.sync_prices(41.5)
+		frappe.db.delete("Pricing Rule", {"for_price_list": TARGET})
+		yesterday = frappe.utils.add_days(frappe.utils.nowdate(), -1)
+		tomorrow = frappe.utils.add_days(frappe.utils.nowdate(), 1)
+		ended = self.make_rule(1, 3000, valid_upto=tomorrow)
+		frappe.db.set_value("Pricing Rule", ended.name, "valid_upto", yesterday)  # Frappe refuses a past date
+		self.make_rule(1, 3100, valid_from=tomorrow)
+		self.make_rule(1, 3900)
+		frappe.cache().delete_value(rates.SHEET_KEY)
+
+		self.assertEqual(rates.price_sheet()["slabs"][ITEM], [[1, 0, 3900]])
+
+	def test_an_empty_sheet_is_not_kept_for_ten_minutes(self):
+		frappe.cache().delete_value(rates.SHEET_KEY)
+		config = frappe.get_doc("FossDoc Shop Settings")
+		previous = config.uah_price_list
+		frappe.db.set_single_value("FossDoc Shop Settings", "uah_price_list", "")
+		frappe.clear_cache(doctype="FossDoc Shop Settings")
+		self.addCleanup(frappe.db.set_single_value, "FossDoc Shop Settings", "uah_price_list", previous)
+		self.addCleanup(frappe.clear_cache, doctype="FossDoc Shop Settings")
+
+		self.assertEqual(rates.price_sheet(), {"items": {}, "slabs": {}})
+		self.assertIsNone(frappe.cache().get_value(rates.SHEET_KEY))
+
+	def test_the_sheet_is_dropped_again_after_the_commit_of_a_new_rate(self):
+		before = len(frappe.db.after_commit._functions)
+		rates.sync_prices(41.5)
+		ours = [
+			callback
+			for callback in list(frappe.db.after_commit._functions)[before:]
+			if getattr(callback, "__module__", "") == "fossdoc_shop.rates"
+		]
+		frappe.cache().set_value(rates.SHEET_KEY, {"items": {"x": 1}, "slabs": {}})
+
+		self.assertEqual(len(ours), 1)
+		ours[0]()  # what the commit runs
+
+		self.assertIsNone(frappe.cache().get_value(rates.SHEET_KEY))
