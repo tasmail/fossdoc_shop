@@ -20,6 +20,10 @@ TIMEOUT = 20
 # The prices of the UAH list as the calculator of the site reads them; dropped when the list is made again.
 SHEET_KEY = "fossdoc_shop:price_sheet"
 SHEET_SECONDS = 600  # a price edited by hand in the UAH list reaches the calculator after this time
+# The payments for services are an item of 1 USD that the customer buys as many times as the agreed amount: a whole
+# hryvnia for it would be up to 1.1% away from the rate, so its price keeps the kopecks.
+PAYMENTS_GROUP = "FossDoc Service Payments"
+PAYMENTS_STEP = 0.01
 
 
 def fetch_nbu_rate(currency: str = FROM_CURRENCY) -> tuple[float, datetime.date]:
@@ -104,8 +108,11 @@ def ensure_price_list(name: str) -> None:
 
 def sync_item_prices(master: str, target: str, rate: float, step: float) -> dict:
 	"""Make the item prices of the target list from the master list; a price that left the master goes."""
+	exact = set(frappe.get_all("Item", filters={"item_group": PAYMENTS_GROUP}, pluck="name"))
 	wanted = {
-		row.item_code: round_to_step(row.price_list_rate * rate, step)
+		row.item_code: round_to_step(
+			row.price_list_rate * rate, PAYMENTS_STEP if row.item_code in exact else step
+		)
 		for row in frappe.get_all(
 			"Item Price",
 			filters={"price_list": master, "selling": 1},
