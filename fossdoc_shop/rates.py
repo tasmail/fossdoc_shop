@@ -215,6 +215,16 @@ def sync_prices(rate: float | None = None) -> dict:
 	return result
 
 
+def refresh() -> None:
+	"""Hook after a migrate: make the UAH prices again from the stored rate, so that a change of how they are made
+	(the step of an item, a new rule) reaches the site with the new code and not with the next rate of the bank.
+	The prices do not change when nothing did, and a failure must not stop the migrate."""
+	try:
+		sync_prices()
+	except Exception:  # noqa: BLE001 - whatever goes wrong with the prices, the migrate goes on
+		frappe.log_error(title="The UAH prices were not made after the migrate")
+
+
 def price_sheet() -> dict:
 	"""The prices of the UAH list for the calculator of the site: {"items": {code: price}, "slabs": {code: rows}}.
 

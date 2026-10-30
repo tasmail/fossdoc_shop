@@ -28,6 +28,7 @@ after_migrate = [
 	"fossdoc_shop.orders.ensure_item_fields",
 	"fossdoc_shop.setup.ensure_calculation_mail",
 	"fossdoc_shop.setup.ensure_payment_mail",
+	"fossdoc_shop.rates.refresh",
 ]
 
 doc_events = {

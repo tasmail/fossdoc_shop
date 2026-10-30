@@ -116,6 +116,23 @@ class TestUahPrices(FrappeTestCase):
 		self.assertEqual(paid, 45.35)  # not 45: the amount in dollars times it follows the rate
 		self.assertEqual(self.price(), 4535)  # an ordinary price is still rounded to the step (1)
 
+	def test_the_migrate_makes_the_prices_again_from_the_stored_rate_and_survives_a_failure(self):
+		from fossdoc_shop import hooks
+
+		self.assertIn("fossdoc_shop.rates.refresh", hooks.after_migrate)
+		rates.sync_prices(41.5)
+		frappe.db.set_value("Item Price", {"item_code": ITEM, "price_list": TARGET}, "price_list_rate", 1)
+		with mock.patch.object(rates, "current_rate", return_value=(41.5, datetime.date(2026, 10, 25))):
+			rates.refresh()
+		self.assertEqual(self.price(), 4150)  # the price that left the rate is made again
+
+		with (
+			mock.patch.object(rates, "sync_prices", side_effect=ValueError("broken")),
+			mock.patch.object(rates.frappe, "log_error") as logged,
+		):
+			rates.refresh()  # no exception
+		logged.assert_called_once()
+
 	def test_a_new_rate_changes_the_price_and_the_same_rate_changes_nothing(self):
 		rates.sync_prices(41.5)
 		again = rates.sync_prices(41.5)
