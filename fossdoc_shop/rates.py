@@ -24,6 +24,7 @@ SHEET_SECONDS = 600  # a price edited by hand in the UAH list reaches the calcul
 # hryvnia for it would be up to 1.1% away from the rate, so its price keeps the kopecks.
 PAYMENTS_GROUP = "FossDoc Service Payments"
 PAYMENTS_STEP = 0.01
+SAVEPOINT = "fossdoc_uah_prices"
 
 
 def fetch_nbu_rate(currency: str = FROM_CURRENCY) -> tuple[float, datetime.date]:
@@ -215,13 +216,30 @@ def sync_prices(rate: float | None = None) -> dict:
 	return result
 
 
+def latest_rate() -> float | None:
+	"""The rate that the hourly job applied last: the newest stored one, also when the bank dated it tomorrow."""
+	rate = frappe.db.get_value(
+		"Currency Exchange",
+		{"from_currency": FROM_CURRENCY, "to_currency": TO_CURRENCY, "for_selling": 1},
+		"exchange_rate",
+		order_by="date desc",
+	)
+	return float(rate) if rate else None
+
+
 def refresh() -> None:
-	"""Hook after a migrate: make the UAH prices again from the stored rate, so that a change of how they are made
-	(the step of an item, a new rule) reaches the site with the new code and not with the next rate of the bank.
-	The prices do not change when nothing did, and a failure must not stop the migrate."""
+	"""Hook after a migrate: make the UAH prices again from the rate that the hourly job applied last, so that a change
+	of how they are made (the step of an item, a new rule) reaches the site with the new code and not with the next rate
+	of the bank. The prices do not change when nothing did, and a failure must not stop the migrate: its writes are
+	rolled back to the savepoint and logged."""
+	rate = latest_rate()
+	if rate is None:
+		return
+	frappe.db.savepoint(SAVEPOINT)
 	try:
-		sync_prices()
+		sync_prices(rate)
 	except Exception:  # noqa: BLE001 - whatever goes wrong with the prices, the migrate goes on
+		frappe.db.rollback(save_point=SAVEPOINT)
 		frappe.log_error(title="The UAH prices were not made after the migrate")
 
 

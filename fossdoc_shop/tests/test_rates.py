@@ -116,22 +116,69 @@ class TestUahPrices(FrappeTestCase):
 		self.assertEqual(paid, 45.35)  # not 45: the amount in dollars times it follows the rate
 		self.assertEqual(self.price(), 4535)  # an ordinary price is still rounded to the step (1)
 
-	def test_the_migrate_makes_the_prices_again_from_the_stored_rate_and_survives_a_failure(self):
+	def store(self, rate, date):
+		frappe.db.delete("Currency Exchange", {"from_currency": "USD", "to_currency": "UAH"})
+		rates.store_rate(rate, datetime.date.fromisoformat(date))
+
+	def test_the_migrate_is_registered_and_makes_a_changed_price_again_from_the_stored_rate(self):
 		from fossdoc_shop import hooks
 
 		self.assertIn("fossdoc_shop.rates.refresh", hooks.after_migrate)
+		self.store(41.5, "2026-10-25")
 		rates.sync_prices(41.5)
 		frappe.db.set_value("Item Price", {"item_code": ITEM, "price_list": TARGET}, "price_list_rate", 1)
-		with mock.patch.object(rates, "current_rate", return_value=(41.5, datetime.date(2026, 10, 25))):
+
+		rates.refresh()
+
+		self.assertEqual(self.price(), 4150)
+
+	def test_the_migrate_keeps_the_rate_that_the_bank_dated_tomorrow(self):
+		tomorrow = frappe.utils.add_days(frappe.utils.today(), 1)
+		self.store(45.3526, tomorrow)
+		rates.sync_prices(45.3526)
+
+		rates.refresh()
+
+		self.assertEqual(self.price(), 4535)  # not the price of an older rate
+
+	def test_the_migrate_does_nothing_without_a_rate(self):
+		frappe.db.delete("Currency Exchange", {"from_currency": "USD", "to_currency": "UAH"})
+		with mock.patch.object(rates, "sync_prices") as synced:
 			rates.refresh()
-		self.assertEqual(self.price(), 4150)  # the price that left the rate is made again
+		synced.assert_not_called()
+
+	def test_a_failing_sync_is_rolled_back_logged_and_not_raised(self):
+		self.store(41.5, "2026-10-25")
+		rates.sync_prices(41.5)
+
+		def broken(rate):
+			frappe.db.set_value("Item Price", {"item_code": ITEM, "price_list": TARGET}, "price_list_rate", 1)
+			raise ValueError("broken")
 
 		with (
-			mock.patch.object(rates, "sync_prices", side_effect=ValueError("broken")),
+			mock.patch.object(rates, "sync_prices", side_effect=broken),
 			mock.patch.object(rates.frappe, "log_error") as logged,
 		):
 			rates.refresh()  # no exception
+
 		logged.assert_called_once()
+		self.assertEqual(self.price(), 4150)  # the half-made write is gone
+
+	def test_the_migrate_gives_a_payment_item_its_kopecks(self):
+		self.test_a_payment_for_services_keeps_the_kopecks_of_the_rate_the_other_prices_are_rounded()
+		frappe.db.set_value(
+			"Item Price", {"item_code": PAYMENT_ITEM, "price_list": TARGET}, "price_list_rate", 45
+		)
+		self.store(45.3526, "2026-10-25")
+
+		rates.refresh()
+
+		self.assertEqual(
+			frappe.db.get_value(
+				"Item Price", {"item_code": PAYMENT_ITEM, "price_list": TARGET}, "price_list_rate"
+			),
+			45.35,
+		)
 
 	def test_a_new_rate_changes_the_price_and_the_same_rate_changes_nothing(self):
 		rates.sync_prices(41.5)
