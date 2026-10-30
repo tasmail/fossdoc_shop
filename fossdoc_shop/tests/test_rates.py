@@ -11,6 +11,7 @@ NBU = [{"r030": 840, "txt": "Долар США", "rate": 41.5321, "cc": "USD", "
 MASTER = "Test USD List"
 TARGET = "Test UAH List"
 ITEM = "TEST-RATE-ITEM"
+PAYMENT_ITEM = "TEST-RATE-PAYMENT"
 
 
 class TestRateOfTheNationalBank(FrappeTestCase):
@@ -73,6 +74,47 @@ class TestUahPrices(FrappeTestCase):
 
 		self.assertEqual(self.price(), 4153)
 		self.assertGreaterEqual(result["items"]["created"], 1)
+
+	def test_a_payment_for_services_keeps_the_kopecks_of_the_rate_the_other_prices_are_rounded(self):
+		if not frappe.db.exists("Item Group", rates.PAYMENTS_GROUP):
+			frappe.get_doc(
+				{
+					"doctype": "Item Group",
+					"item_group_name": rates.PAYMENTS_GROUP,
+					"parent_item_group": "All Item Groups",
+				}
+			).insert()
+		if not frappe.db.exists("Item", PAYMENT_ITEM):
+			frappe.get_doc(
+				{
+					"doctype": "Item",
+					"item_code": PAYMENT_ITEM,
+					"item_group": rates.PAYMENTS_GROUP,
+					"stock_uom": "Nos",
+					"is_stock_item": 0,
+				}
+			).insert()
+		frappe.db.delete("Item Price", {"item_code": PAYMENT_ITEM})
+		# the other tests count the prices that a sync changes: this item must not stay in the list
+		self.addCleanup(frappe.db.delete, "Item Price", {"item_code": PAYMENT_ITEM})
+		frappe.get_doc(
+			{
+				"doctype": "Item Price",
+				"item_code": PAYMENT_ITEM,
+				"price_list": MASTER,
+				"price_list_rate": 1,
+				"currency": "USD",
+				"selling": 1,
+			}
+		).insert()
+
+		rates.sync_prices(45.3526)
+
+		paid = frappe.db.get_value(
+			"Item Price", {"item_code": PAYMENT_ITEM, "price_list": TARGET}, "price_list_rate"
+		)
+		self.assertEqual(paid, 45.35)  # not 45: the amount in dollars times it follows the rate
+		self.assertEqual(self.price(), 4535)  # an ordinary price is still rounded to the step (1)
 
 	def test_a_new_rate_changes_the_price_and_the_same_rate_changes_nothing(self):
 		rates.sync_prices(41.5)
