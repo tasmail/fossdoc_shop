@@ -11,6 +11,12 @@ SETTINGS = "FossDoc Shop Settings"
 COLOR_FIELDS = ("primary", "tint", "line", "text", "muted", "footer")
 
 
+def shop_open() -> bool:
+	"""Whether the cart and the payments are open. A site that never saved the setting keeps its shop open."""
+	value = frappe.db.get_single_value(SETTINGS, "shop_enabled")
+	return value is None or bool(int(value))
+
+
 def brand() -> dict:
 	"""Colours and requisites for the templates (the Jinja method `brand`).
 
@@ -32,6 +38,8 @@ def brand() -> dict:
 			"calculator_url": site + (settings.calculator_path or ""),
 			"cart_url": site + (settings.cart_path or ""),
 			"orders_url": site + "/orders",
+			# a letter must not send the buyer to a cart that is closed
+			"shop_enabled": shop_open(),
 			# the Cc of the letter (a Jinja template of the Notification reads it)
 			"cc": (settings.sales_email or "") if settings.copy_sales else "",
 		}

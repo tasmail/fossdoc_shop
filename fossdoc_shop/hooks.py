@@ -36,11 +36,11 @@ doc_events = {
 	"Customer": {"before_insert": "fossdoc_shop.orders.set_language"},
 	"User": {"before_insert": "fossdoc_shop.orders.set_language"},
 	"Quotation": {
-		"before_insert": "fossdoc_shop.orders.set_language",
+		"before_insert": ["fossdoc_shop.orders.require_open_shop", "fossdoc_shop.orders.set_language"],
 		"before_validate": "fossdoc_shop.orders.limit_quantities",
 	},
 	"Sales Order": {
-		"before_insert": "fossdoc_shop.orders.set_language",
+		"before_insert": ["fossdoc_shop.orders.require_open_shop", "fossdoc_shop.orders.set_language"],
 		"before_validate": "fossdoc_shop.orders.limit_quantities",
 	},
 }

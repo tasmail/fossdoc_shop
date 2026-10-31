@@ -85,6 +85,13 @@
    "description": "For example /cart"
   },
   {
+   "fieldname": "shop_enabled",
+   "label": "Shop open",
+   "fieldtype": "Check",
+   "default": "1",
+   "description": "Off: the cart, the payments and the links to them are closed; the calculator letter and the demo download keep working."
+  },
+  {
    "fieldname": "colors_section",
    "label": "Colours of the letter and the offer",
    "fieldtype": "Section Break"
@@ -225,6 +232,7 @@
   "site_url",
   "calculator_path",
   "cart_path",
+  "shop_enabled",
   "colors_section",
   "color_primary",
   "color_tint",

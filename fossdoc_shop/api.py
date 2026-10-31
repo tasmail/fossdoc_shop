@@ -44,6 +44,15 @@ def prices():
 	return rates.price_sheet()
 
 
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+@rate_limit(limit=120, seconds=60)
+def shop_status():
+	"""Whether the cart and the payments are open: the pages of the site show or hide their buy blocks by it."""
+	from fossdoc_shop.branding import shop_open
+
+	return {"enabled": shop_open()}
+
+
 @frappe.whitelist()
 def update_prices():
 	"""Fetch the rate of the National Bank and make the prices in hryvnia (the deploy of the site calls it)."""

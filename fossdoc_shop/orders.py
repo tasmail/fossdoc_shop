@@ -26,6 +26,17 @@ def ensure_item_fields():
 	)
 
 
+def require_open_shop(doc, method=None):
+	"""While the shop is closed a visitor of the site cannot start a cart or an order; the staff still can."""
+	from fossdoc_shop.branding import shop_open
+
+	if shop_open() or frappe.session.user == "Administrator":
+		return
+	if frappe.db.get_value("User", frappe.session.user, "user_type") == "System User":
+		return
+	frappe.throw(_("The shop is not open yet. Please send us the calculation and we will answer."))
+
+
 def set_language(doc, method=None):
 	"""A customer, a quotation, an order and a buyer who signs up keep the language that was used on the site."""
 	if doc.get("user_type") not in (None, "Website User"):
