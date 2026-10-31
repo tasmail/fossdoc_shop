@@ -13,8 +13,13 @@ COLOR_FIELDS = ("primary", "tint", "line", "text", "muted", "footer")
 
 def shop_open() -> bool:
 	"""Whether the cart and the payments are open. A site that never saved the setting keeps its shop open."""
-	value = frappe.db.get_single_value(SETTINGS, "shop_enabled")
-	return value is None or bool(int(value))
+	if not frappe.get_meta(SETTINGS).has_field("shop_enabled"):
+		return True  # the code is deployed and the site is not migrated yet
+	# not get_single_value: it turns a value that was never saved into 0, and that would close the shop
+	rows = frappe.db.sql(
+		"select `value` from `tabSingles` where `doctype` = %s and `field` = 'shop_enabled'", SETTINGS
+	)
+	return not rows or rows[0][0] is None or bool(int(rows[0][0]))
 
 
 def brand() -> dict:

@@ -10,7 +10,8 @@ from fossdoc_shop.tests.seed import seed_settings
 class TestShopSwitch(FrappeTestCase):
 	def test_a_site_that_never_saved_the_setting_keeps_the_shop_open(self):
 		seed_settings()
-		frappe.db.set_single_value("FossDoc Shop Settings", "shop_enabled", None)
+		frappe.db.delete("Singles", {"doctype": "FossDoc Shop Settings", "field": "shop_enabled"})
+		frappe.clear_cache(doctype="FossDoc Shop Settings")
 
 		self.assertTrue(shop_open())
 		self.assertEqual(shop_status(), {"enabled": True})
