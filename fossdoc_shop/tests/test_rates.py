@@ -132,14 +132,14 @@ class TestUahPrices(FrappeTestCase):
 
 		self.assertEqual(self.price(), 4150)
 
-	def test_the_migrate_keeps_the_rate_that_the_bank_dated_tomorrow(self):
-		tomorrow = frappe.utils.add_days(frappe.utils.today(), 1)
-		self.store(45.3526, tomorrow)
+	def test_the_migrate_uses_the_rate_in_force_today_not_the_one_the_bank_dated_tomorrow(self):
+		self.store(45.5293, frappe.utils.today())
+		rates.store_rate(45.3526, frappe.utils.getdate(frappe.utils.add_days(frappe.utils.today(), 1)))
 		rates.sync_prices(45.3526)
 
 		rates.refresh()
 
-		self.assertEqual(self.price(), 4535)  # not the price of an older rate
+		self.assertEqual(self.price(), 4553)
 
 	def test_the_migrate_does_nothing_without_a_rate(self):
 		frappe.db.delete("Currency Exchange", {"from_currency": "USD", "to_currency": "UAH"})
@@ -199,16 +199,43 @@ class TestUahPrices(FrappeTestCase):
 		self.assertIsNone(self.price())
 		self.assertEqual(result["items"]["removed"], 1)
 
-	def test_the_update_stores_a_new_rate_once_and_makes_the_prices_from_it(self):
-		frappe.db.delete(
-			"Currency Exchange", {"from_currency": "USD", "to_currency": "UAH", "date": "2026-10-25"}
+	def bank(self, newest, today):
+		"""The answers of the bank: the newest rate without a date, the rate in force with one."""
+		return mock.patch.object(
+			rates, "fetch_nbu_rate", side_effect=lambda currency="USD", date=None: today if date else newest
 		)
-		with mock.patch.object(rates, "fetch_nbu_rate", return_value=(41.5, datetime.date(2026, 10, 25))):
+
+	def test_the_update_makes_the_prices_from_the_rate_in_force_today_and_only_once(self):
+		frappe.db.delete("Currency Exchange", {"from_currency": "USD", "to_currency": "UAH"})
+		frappe.db.set_default(rates.APPLIED_KEY, "", rates.APPLIED_PARENT)
+		today = frappe.utils.getdate()
+		tomorrow = frappe.utils.getdate(frappe.utils.add_days(today, 1))
+		# a Friday: the bank has published Saturday's rate already, which is not the rate of today
+		with self.bank((45.3526, tomorrow), (45.5293, today)):
 			first = rates.update()
 			second = rates.update()
 
 		self.assertTrue(first["new"] and not second["new"])
-		self.assertEqual(self.price(), 4150)
+		self.assertEqual(first["date"], str(today))
+		self.assertEqual(self.price(), 4553)
+		self.assertEqual(
+			frappe.db.count("Currency Exchange", {"from_currency": "USD", "to_currency": "UAH"}), 2
+		)
+
+	def test_the_update_changes_the_prices_when_the_day_of_a_published_rate_comes(self):
+		frappe.db.delete("Currency Exchange", {"from_currency": "USD", "to_currency": "UAH"})
+		frappe.db.set_default(rates.APPLIED_KEY, "", rates.APPLIED_PARENT)
+		today = frappe.utils.getdate()
+		yesterday = frappe.utils.getdate(frappe.utils.add_days(today, -1))
+		with self.bank((45.5293, yesterday), (45.5293, yesterday)):
+			rates.update()
+		self.assertEqual(self.price(), 4553)
+
+		with self.bank((45.3526, today), (45.3526, today)):
+			result = rates.update()
+
+		self.assertTrue(result["new"])
+		self.assertEqual(self.price(), 4535)
 
 	def test_a_failure_of_the_bank_is_logged_and_keeps_the_prices(self):
 		rates.sync_prices(41.5)

@@ -25,11 +25,22 @@ SHEET_SECONDS = 600  # a price edited by hand in the UAH list reaches the calcul
 PAYMENTS_GROUP = "FossDoc Service Payments"
 PAYMENTS_STEP = 0.01
 SAVEPOINT = "fossdoc_uah_prices"
+APPLIED_KEY = "fossdoc_shop_rate_date"  # the date of the rate the UAH prices were last made from
+APPLIED_PARENT = "fossdoc_shop"  # not "__default": a default of that one clears the cache of the whole site
 
 
-def fetch_nbu_rate(currency: str = FROM_CURRENCY) -> tuple[float, datetime.date]:
-	"""The official rate of the currency in hryvnia and the date it is valid from."""
-	response = requests.get(NBU_URL, params={"valcode": currency, "json": ""}, timeout=TIMEOUT)
+def fetch_nbu_rate(
+	currency: str = FROM_CURRENCY, date: datetime.date | None = None
+) -> tuple[float, datetime.date]:
+	"""The official rate of the currency in hryvnia and the date it is valid from.
+
+	Without a date the bank answers with the newest rate, which it publishes days ahead (on a Friday for the
+	weekend and Monday); with a date, with the rate in force on that day.
+	"""
+	params = {"valcode": currency, "json": ""}
+	if date:
+		params["date"] = date.strftime("%Y%m%d")
+	response = requests.get(NBU_URL, params=params, timeout=TIMEOUT)
 	response.raise_for_status()
 	return parse_nbu(response.json(), currency)
 
@@ -216,28 +227,17 @@ def sync_prices(rate: float | None = None) -> dict:
 	return result
 
 
-def latest_rate() -> float | None:
-	"""The rate that the hourly job applied last: the newest stored one, also when the bank dated it tomorrow."""
-	rate = frappe.db.get_value(
-		"Currency Exchange",
-		{"from_currency": FROM_CURRENCY, "to_currency": TO_CURRENCY, "for_selling": 1},
-		"exchange_rate",
-		order_by="date desc",
-	)
-	return float(rate) if rate else None
-
-
 def refresh() -> None:
-	"""Hook after a migrate: make the UAH prices again from the rate that the hourly job applied last, so that a change
+	"""Hook after a migrate: make the UAH prices again from the rate in force today, so that a change
 	of how they are made (the step of an item, a new rule) reaches the site with the new code and not with the next rate
 	of the bank. The prices do not change when nothing did, and a failure must not stop the migrate: its writes are
 	rolled back to the savepoint and logged."""
-	rate = latest_rate()
-	if rate is None:
+	stored = current_rate()
+	if stored is None:
 		return
 	frappe.db.savepoint(SAVEPOINT)
 	try:
-		sync_prices(rate)
+		sync_prices(stored[0])
 	except Exception:  # noqa: BLE001 - whatever goes wrong with the prices, the migrate goes on
 		frappe.db.rollback(save_point=SAVEPOINT)
 		frappe.log_error(title="The UAH prices were not made after the migrate")
@@ -300,13 +300,28 @@ def in_force(rule, today=None) -> bool:
 
 
 def update() -> dict:
-	"""The job of the scheduler: fetch the rate; when it is new, make the UAH prices from it."""
+	"""The job of the scheduler: store the rates of the bank; when the rate in force today is not the one the UAH
+	prices were made from, make them from it.
+
+	The bank publishes a rate days ahead, so besides the newest rate the one in force today is fetched and stored
+	too (a weekend would else never get its own rate). The prices follow the rate in force, like the old site.
+	"""
+	today = frappe.utils.getdate()
 	try:
-		rate, date = fetch_nbu_rate()
+		fetched = [fetch_nbu_rate(), fetch_nbu_rate(date=today)]
 	except (requests.RequestException, ValueError) as error:
 		frappe.log_error(title="The rate of the National Bank was not fetched", message=str(error))
 		return {"error": str(error)}
-	if not store_rate(rate, date):
+	stored_now = [store_rate(rate, date) for rate, date in fetched]  # both are stored, none is skipped
+	if True in stored_now:
+		frappe.db.commit()
+	stored = current_rate()
+	if stored is None:
+		return {"skipped": "there is no rate"}
+	rate, date = stored
+	if frappe.db.get_default(APPLIED_KEY, APPLIED_PARENT) == f"{date}":
 		return {"rate": rate, "date": str(date), "new": False}
+	result = sync_prices(rate)
+	frappe.db.set_default(APPLIED_KEY, f"{date}", APPLIED_PARENT)
 	frappe.db.commit()
-	return {"rate": rate, "date": str(date), "new": True, **sync_prices(rate)}
+	return {"rate": rate, "date": str(date), "new": True, **result}
