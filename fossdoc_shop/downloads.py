@@ -19,7 +19,7 @@ from frappe.rate_limiter import rate_limit
 from frappe.utils import validate_email_address
 from werkzeug.exceptions import HTTPException
 
-from fossdoc_shop import licensing
+from fossdoc_shop import captcha, licensing
 from fossdoc_shop.branding import brand
 
 GROUP = "FossDoc Downloads"
@@ -120,11 +120,18 @@ def ensure_lead(full_name: str, email: str, phone: str, version: str, organizati
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=10, seconds=60 * 60)
 def request_download(
-	full_name: str, email: str, phone: str = "", website: str = "", lang: str = "", organization: str = ""
+	full_name: str,
+	email: str,
+	phone: str = "",
+	website: str = "",
+	lang: str = "",
+	organization: str = "",
+	recaptcha_token: str = "",
 ):
 	"""Store the request as a Lead and mail the links of the newest release (a filled `website` is a robot)."""
 	if website:
 		return {"sent": True}
+	captcha.verify(recaptcha_token, "download")
 	if lang in ("uk", "ru", "en"):  # the language of the page that the visitor used
 		frappe.local.lang = lang
 	email = validate_email_address(email, throw=True)

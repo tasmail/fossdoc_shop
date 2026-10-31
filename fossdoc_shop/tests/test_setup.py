@@ -166,8 +166,8 @@ class TestOneSourceOfLook(FrappeTestCase):
 			"an e-mail address": r"[\w.+-]+@[\w-]+\.[a-z]{2,}",
 			"a phone number": r"\+\d[\d ()-]{7,}",
 			"a colour": r"#[0-9a-fA-F]{6}\b",
-			# the namespaces of XML are names of a format, and the National Bank is a public service: not the seller
-			"a site address": r"https?://(?!www\.w3\.org|www\.foss\.kharkov\.ua/FossDoc/|bank\.gov\.ua/)[\w.-]+\.[a-z]{2,}",
+			# the namespaces of XML are names of a format; the National Bank and the check of Google are public services: not the seller
+			"a site address": r"https?://(?!www\.w3\.org|www\.foss\.kharkov\.ua/FossDoc/|bank\.gov\.ua/|www\.google\.com/recaptcha/)[\w.-]+\.[a-z]{2,}",
 		}
 		for path in files:
 			if path.name in {"hooks.py"}:  # the publisher and the e-mail of the app itself
