@@ -88,3 +88,24 @@ class TestCaptcha(FrappeTestCase):
 			)
 
 		post.assert_not_called()
+
+	def test_a_token_made_on_another_host_is_refused(self):
+		request = MagicMock()
+		request.host = "www.fossdoc.com:443"
+		with patch.object(frappe.local, "request", request, create=True):
+			self.verify(reply(success=True, action="calculation", score=0.9, hostname="www.fossdoc.com"))
+			with self.assertRaises(frappe.ValidationError):
+				self.verify(reply(success=True, action="calculation", score=0.9, hostname="evil.example"))
+			with self.assertRaises(frappe.ValidationError):
+				self.verify(reply(success=True, action="calculation", score=0.9))
+
+	def test_a_score_of_zero_is_a_setting_and_not_the_default(self):
+		seed_settings(recaptcha_score=0)
+
+		self.verify(reply(success=True, action="calculation", score=0))
+
+	def test_an_answer_that_is_not_json_closes_the_form(self):
+		response = MagicMock()
+		response.json.side_effect = ValueError
+		with self.assertRaises(frappe.ValidationError):
+			self.verify(response)

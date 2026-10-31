@@ -34,15 +34,29 @@ def verify(token: str | None, action: str) -> None:
 	try:
 		reply = requests.post(
 			VERIFY_URL,
-			data={"secret": secret, "response": token, "remoteip": frappe.local.request_ip or ""},
+			data={"secret": secret, "response": token},  # no remoteip: behind the proxy it is the proxy
 			timeout=TIMEOUT,
 		).json()
 	except (requests.RequestException, ValueError):
 		frappe.throw(
 			_("The check of the form is not available now. Try again later."), frappe.ValidationError
 		)
-	threshold = frappe.db.get_single_value(SETTINGS, "recaptcha_score") or DEFAULT_SCORE
-	if not (reply.get("success") and reply.get("action") == action and reply.get("score", 0) >= threshold):
+	threshold = frappe.db.get_single_value(SETTINGS, "recaptcha_score")
+	threshold = DEFAULT_SCORE if threshold is None else threshold
+	if not (
+		reply.get("success")
+		and reply.get("action") == action
+		and reply.get("score", 0) >= threshold
+		and _host_matches(reply.get("hostname"))
+	):
 		frappe.throw(
 			_("The check of the form failed. Reload the page and try again."), frappe.ValidationError
 		)
+
+
+def _host_matches(hostname: str | None) -> bool:
+	"""The token was made on the page of this site (a token of another site with the same keys is refused)."""
+	request = getattr(frappe.local, "request", None)
+	if request is None:
+		return True  # no request: a test run or a console
+	return (hostname or "").lower() == request.host.split(":")[0].lower()

@@ -6,6 +6,7 @@ from email.utils import formataddr
 
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 
 from fossdoc_shop import captcha
 from fossdoc_shop.branding import brand
@@ -215,6 +216,7 @@ def issue_license(request):
 
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=100, seconds=60 * 60)
 def send_message(sender: str, message: str, subject: str = "Website Query", recaptcha_token: str = ""):
 	"""The contact form of the site: the stock send_message of Frappe after the check of reCAPTCHA."""
 	from frappe.www.contact import send_message as stock
