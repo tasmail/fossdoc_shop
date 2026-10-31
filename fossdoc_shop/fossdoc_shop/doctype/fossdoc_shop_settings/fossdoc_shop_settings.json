@@ -187,6 +187,29 @@
    "label": "Rounding step (UAH)",
    "default": "1",
    "description": "A price in UAH is rounded to a multiple of this number, for example 1 or 10"
+  },
+  {
+   "fieldname": "antispam_section",
+   "label": "Check of the forms (reCAPTCHA v3)",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "recaptcha_site_key",
+   "label": "Site key",
+   "fieldtype": "Data",
+   "description": "Public key; the pages load the script of Google with it"
+  },
+  {
+   "fieldname": "recaptcha_secret",
+   "label": "Secret key",
+   "fieldtype": "Password"
+  },
+  {
+   "fieldname": "recaptcha_score",
+   "label": "Lowest score",
+   "fieldtype": "Float",
+   "default": "0.5",
+   "description": "0 to 1; a lower score is refused"
   }
  ],
  "hide_toolbar": 1,
@@ -241,6 +264,10 @@
   "prices_section",
   "master_price_list",
   "uah_price_list",
-  "rounding_step"
+  "rounding_step",
+  "antispam_section",
+  "recaptcha_site_key",
+  "recaptcha_secret",
+  "recaptcha_score"
  ]
 }

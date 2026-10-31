@@ -7,6 +7,7 @@ from email.utils import formataddr
 import frappe
 from frappe import _
 
+from fossdoc_shop import captcha
 from fossdoc_shop.branding import brand
 from fossdoc_shop.calculation import MARKER
 from fossdoc_shop.payment import SUBJECT_MARK
@@ -211,3 +212,12 @@ def issue_license(request):
 		licensing.issue_for_order(request.reference_name)
 	except Exception:  # noqa: BLE001
 		frappe.log_error(title="The licence of the order was not made")
+
+
+@frappe.whitelist(allow_guest=True)
+def send_message(sender: str, message: str, subject: str = "Website Query", recaptcha_token: str = ""):
+	"""The contact form of the site: the stock send_message of Frappe after the check of reCAPTCHA."""
+	from frappe.www.contact import send_message as stock
+
+	captcha.verify(recaptcha_token, "contact")
+	return stock(sender, message, subject)
