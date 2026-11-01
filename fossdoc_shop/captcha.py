@@ -54,9 +54,31 @@ def verify(token: str | None, action: str) -> None:
 		)
 
 
+def _clean(host: str | None) -> str:
+	"""A host name without a scheme, a port, a trailing dot and the case."""
+	host = (host or "").strip().lower().split("//")[-1].split("/")[0]
+	if host.startswith("["):  # an IPv6 literal: the port follows the closing bracket
+		return host.split("]")[0] + "]"
+	return host.split(":")[0].rstrip(".")
+
+
+def _own_hosts(request) -> set[str]:
+	"""The names under which this site answers: Google reports the host of the page, which behind a proxy may differ from the
+	Host header the bench receives, so the headers of the proxy and the configured names count too."""
+	headers = request.headers
+	hosts = {
+		_clean(request.host),
+		_clean((headers.get("X-Forwarded-Host") or "").split(",")[0]),
+		_clean(headers.get("X-Frappe-Site-Name")),
+		_clean(frappe.local.site),
+		_clean(frappe.conf.get("host_name")),
+	}
+	return hosts - {""}
+
+
 def _host_matches(hostname: str | None) -> bool:
-	"""The token was made on the page of this site (a token of another site with the same keys is refused)."""
+	"""The token was made on a page of this site (a token of another site with the same keys is refused)."""
 	request = getattr(frappe.local, "request", None)
 	if request is None:
 		return True  # no request: a test run or a console
-	return (hostname or "").lower() == request.host.split(":")[0].lower()
+	return _clean(hostname) in _own_hosts(request)

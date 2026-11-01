@@ -92,12 +92,39 @@ class TestCaptcha(FrappeTestCase):
 	def test_a_token_made_on_another_host_is_refused(self):
 		request = MagicMock()
 		request.host = "www.fossdoc.com:443"
+		request.headers = {}
 		with patch.object(frappe.local, "request", request, create=True):
 			self.verify(reply(success=True, action="calculation", score=0.9, hostname="www.fossdoc.com"))
 			with self.assertRaises(frappe.ValidationError):
 				self.verify(reply(success=True, action="calculation", score=0.9, hostname="evil.example"))
 			with self.assertRaises(frappe.ValidationError):
 				self.verify(reply(success=True, action="calculation", score=0.9))
+
+	def test_the_public_name_is_accepted_behind_a_proxy_that_changes_the_host_header(self):
+		request = MagicMock()
+		request.host = "n1.internal"  # what the bench sees
+		request.headers = {"X-Forwarded-Host": "www.fossdoc.com, n1.internal"}
+		with patch.object(frappe.local, "request", request, create=True):
+			self.verify(reply(success=True, action="calculation", score=0.9, hostname="www.fossdoc.com"))
+		request.headers = {"X-Frappe-Site-Name": "fossdocprod.erp-crm.org"}
+		with patch.object(frappe.local, "request", request, create=True):
+			self.verify(
+				reply(success=True, action="calculation", score=0.9, hostname="fossdocprod.erp-crm.org")
+			)
+			with self.assertRaises(frappe.ValidationError):
+				self.verify(reply(success=True, action="calculation", score=0.9, hostname="www.fossdoc.com"))
+
+	def test_the_configured_host_name_a_port_a_trailing_dot_and_the_case_are_handled(self):
+		request = MagicMock()
+		request.host = "internal:8000"
+		request.headers = {}
+		with (
+			patch.object(frappe.local, "request", request, create=True),
+			patch.object(frappe.conf, "host_name", "https://WWW.fossdoc.com/", create=True),
+		):
+			self.verify(reply(success=True, action="calculation", score=0.9, hostname="www.fossdoc.com."))
+		self.assertEqual(captcha._clean("[::1]:8000"), "[::1]")
+		self.assertEqual(captcha._clean(None), "")
 
 	def test_a_score_of_zero_is_a_setting_and_not_the_default(self):
 		seed_settings(recaptcha_score=0)
