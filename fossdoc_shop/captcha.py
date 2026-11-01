@@ -64,12 +64,11 @@ def _clean(host: str | None) -> str:
 
 def _own_hosts(request) -> set[str]:
 	"""The names under which this site answers: Google reports the host of the page, which behind a proxy may differ from the
-	Host header the bench receives, so the headers of the proxy and the configured names count too."""
-	headers = request.headers
+	Host header the bench receives, so the configured names count too. X-Forwarded-Host is not trusted: a client can send it.
+	X-Frappe-Site-Name is what Frappe itself uses to pick the site, so it can only name a site of this bench."""
 	hosts = {
 		_clean(request.host),
-		_clean((headers.get("X-Forwarded-Host") or "").split(",")[0]),
-		_clean(headers.get("X-Frappe-Site-Name")),
+		_clean(request.headers.get("X-Frappe-Site-Name")),
 		_clean(frappe.local.site),
 		_clean(frappe.conf.get("host_name")),
 	}

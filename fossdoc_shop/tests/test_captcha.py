@@ -103,9 +103,12 @@ class TestCaptcha(FrappeTestCase):
 	def test_the_public_name_is_accepted_behind_a_proxy_that_changes_the_host_header(self):
 		request = MagicMock()
 		request.host = "n1.internal"  # what the bench sees
-		request.headers = {"X-Forwarded-Host": "www.fossdoc.com, n1.internal"}
+		request.headers = {
+			"X-Forwarded-Host": "www.fossdoc.com"
+		}  # a header that a client can send: not trusted
 		with patch.object(frappe.local, "request", request, create=True):
-			self.verify(reply(success=True, action="calculation", score=0.9, hostname="www.fossdoc.com"))
+			with self.assertRaises(frappe.ValidationError):
+				self.verify(reply(success=True, action="calculation", score=0.9, hostname="www.fossdoc.com"))
 		request.headers = {"X-Frappe-Site-Name": "fossdocprod.erp-crm.org"}
 		with patch.object(frappe.local, "request", request, create=True):
 			self.verify(
