@@ -106,9 +106,11 @@ class TestCaptcha(FrappeTestCase):
 		request.headers = {
 			"X-Forwarded-Host": "www.fossdoc.com"
 		}  # a header that a client can send: not trusted
-		with patch.object(frappe.local, "request", request, create=True):
-			with self.assertRaises(frappe.ValidationError):
-				self.verify(reply(success=True, action="calculation", score=0.9, hostname="www.fossdoc.com"))
+		with (
+			patch.object(frappe.local, "request", request, create=True),
+			self.assertRaises(frappe.ValidationError),
+		):
+			self.verify(reply(success=True, action="calculation", score=0.9, hostname="www.fossdoc.com"))
 		request.headers = {"X-Frappe-Site-Name": "fossdocprod.erp-crm.org"}
 		with patch.object(frappe.local, "request", request, create=True):
 			self.verify(
