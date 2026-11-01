@@ -5,17 +5,19 @@ from frappe import _
 from frappe.rate_limiter import rate_limit
 from frappe.utils import escape_html, validate_email_address
 
+from fossdoc_shop import captcha
 from fossdoc_shop.calculation import MARKER, parse_calculation
 
 
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=30, seconds=60 * 60)
-def send_calculation(sender: str, message: str):
+def send_calculation(sender: str, message: str, recaptcha_token: str = ""):
 	"""Store the calculation as a Communication; the Notification of the app mails it (with a copy to sales).
 
 	Unlike the contact form of Frappe this sends nothing by itself, so sales get the finished letter with the
 	PDF offer and not the raw text of the message.
 	"""
+	captcha.verify(recaptcha_token, "calculation")
 	sender = validate_email_address(sender, throw=True)
 	calculation = parse_calculation(message)
 	if not calculation:
@@ -42,6 +44,13 @@ def prices():
 	from fossdoc_shop import rates
 
 	return rates.price_sheet()
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+@rate_limit(limit=120, seconds=60)
+def recaptcha_site_key():
+	"""The public key of reCAPTCHA v3 that the forms of the site load the script of Google with."""
+	return {"site_key": captcha.site_key()}
 
 
 @frappe.whitelist()
