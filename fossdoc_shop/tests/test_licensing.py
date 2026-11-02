@@ -331,7 +331,7 @@ class TestTheSignatureIsTheOneTheServerChecks(FrappeTestCase):
 	server refuses ("the integrity of the licence is violated")."""
 
 	@property
-	def NS(self):  # noqa: N802
+	def NS(self):
 		return {"d": licensing.DSIG_NS}
 
 	def sample(self):
