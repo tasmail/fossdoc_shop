@@ -1,0 +1,51 @@
+﻿<FossDocApplicationServerLicense xmlns="http://www.foss.kharkov.ua/FossDoc/ApplicationServer/License">
+  <ID>c28836b0-c98f-484f-bd65-81fb8776aa75</ID>
+  <Type>Общего пользования</Type>
+  <MaxUserAccounts>6</MaxUserAccounts>
+  <SchemaExtendingAllowed>true</SchemaExtendingAllowed>
+  <Info>
+    <LicenseOwner>FossDoc Free</LicenseOwner>
+    <Localization>uk-UA</Localization>
+    <Version>7.4</Version>
+    <History>true</History>
+    <EventLogger>true</EventLogger>
+    <DirectoryIntegration>true</DirectoryIntegration>
+    <InternetMailTransport>true</InternetMailTransport>
+    <WebXsp>true</WebXsp>
+    <NotificationsRouting>true</NotificationsRouting>
+    <DocumentDiscussion>true</DocumentDiscussion>
+    <CalculatedFields>true</CalculatedFields>
+    <OCRTesseract>true</OCRTesseract>
+    <ControllableDocument>true</ControllableDocument>
+    <DocumentTransferJournal>true</DocumentTransferJournal>
+    <WorkStatistics>true</WorkStatistics>
+    <EDMS_CitizenRequests>true</EDMS_CitizenRequests>
+    <EDMS_Projects>true</EDMS_Projects>
+    <EDMS_Reminders>true</EDMS_Reminders>
+    <EDMS_InternalNotes>true</EDMS_InternalNotes>
+    <EDMS_Resolutions>true</EDMS_Resolutions>
+    <DocumentArchive>true</DocumentArchive>
+    <EDMS_Assistants>true</EDMS_Assistants>
+    <EDMS_BarcodingDocuments>true</EDMS_BarcodingDocuments>
+    <EDMS_Workflows_StoreActingUsersInWorkflowPoints>true</EDMS_Workflows_StoreActingUsersInWorkflowPoints>
+    <EDMS_Workflows_ShortCode_ExecutorIsWorkflowAuthor>true</EDMS_Workflows_ShortCode_ExecutorIsWorkflowAuthor>
+    <EDMS_ApprovalWithDepartmentsHeads>true</EDMS_ApprovalWithDepartmentsHeads>
+    <EDMS_Workflows_RestrictFreeRoutingByGroups>true</EDMS_Workflows_RestrictFreeRoutingByGroups>
+    <EDMS_Workflows_ExecutionStatus>true</EDMS_Workflows_ExecutionStatus>
+    <EDMS_DigitalSignature>true</EDMS_DigitalSignature>
+  </Info>
+  <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+    <SignedInfo>
+      <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" />
+      <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1" />
+      <Reference URI="">
+        <Transforms>
+          <Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
+        </Transforms>
+        <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
+        <DigestValue>MPJiGGsWqiXoaeiFTsM1+XXEu/0=</DigestValue>
+      </Reference>
+    </SignedInfo>
+    <SignatureValue>aFhoqH/kpev9epBMnBn0tM0mxIJcaV4EOQFFrPjq1Y2rpIQhcBkBY0hdLCLZBWpqW5sUknZ5QOLPMqppRx7nrG1Dor+XQUfOQn6PHlFfuXMrQXFfbtrWF952qPArxLXiO787JbI9ArKzr2cq2DNrkx+9RImthOyXdDiAnFqDisRKXT3jP3BUgCYRyrcu9aorTq2uBcdEggrZ6Z97G6E8Wp5iWwHxkq8EuzUUqIbD4oDn+J4wlszF/bqfC7s9qG3FGnVFVOkefrB32ZgJu96PhU1p7dGr9XyhJErcOy3gcO9K4/vzSmemKf2D4dfhBKU7f/GE6WN03uSntvzr4qNzzg==</SignatureValue>
+  </Signature>
+</FossDocApplicationServerLicense>

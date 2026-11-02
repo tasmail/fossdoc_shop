@@ -248,7 +248,11 @@ def sign(root, private_key) -> None:
 	_dsig(transforms, "Transform", Algorithm=f"{DSIG_NS}enveloped-signature")
 	_dsig(reference, "DigestMethod", Algorithm=f"{DSIG_NS}sha1")
 	_dsig(reference, "DigestValue").text = _b64(digest)
-	canonical = etree.tostring(signed_info, method="c14n")
+	# Not the inclusive form of lxml: libxml2 writes a stray xmlns="" on the children of an element with an empty
+	# attribute (<Reference URI="">) when it canonicalizes a part of a document, and the server (.NET SignedXml) does
+	# not, so a signature over that form is refused as a violation of the integrity of the licence. The exclusive form
+	# is the one that the signature of a licence of the generator of the product verifies against (a test checks it).
+	canonical = etree.tostring(signed_info, method="c14n", exclusive=True)
 	value = private_key.sign(canonical, padding.PKCS1v15(), hashes.SHA1())
 	_dsig(signature, "SignatureValue").text = _b64(value)
 
