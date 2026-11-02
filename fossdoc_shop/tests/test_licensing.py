@@ -72,7 +72,7 @@ class TestLicenceOfAnOrder(FrappeTestCase):
 		self.assertEqual(root.findtext("l:Info/l:History", namespaces=ns), "true")
 		signature = root.find("d:Signature", ns)
 		value = base64.b64decode(signature.findtext("d:SignatureValue", namespaces=ns))
-		canonical = etree.tostring(signature.find("d:SignedInfo", ns), method="c14n")
+		canonical = etree.tostring(signature.find("d:SignedInfo", ns), method="c14n", exclusive=True)
 		private_key.public_key().verify(value, canonical, padding.PKCS1v15(), hashes.SHA1())
 		digest = signature.findtext("d:SignedInfo/d:Reference/d:DigestValue", namespaces=ns)
 		root.remove(signature)
@@ -273,7 +273,7 @@ class TestDemoLicence(FrappeTestCase):
 		ns = {"d": licensing.DSIG_NS}
 		signature = root.find("d:Signature", ns)
 		value = base64.b64decode(signature.findtext("d:SignatureValue", namespaces=ns))
-		canonical = etree.tostring(signature.find("d:SignedInfo", ns), method="c14n")
+		canonical = etree.tostring(signature.find("d:SignedInfo", ns), method="c14n", exclusive=True)
 		self.private_key.public_key().verify(value, canonical, padding.PKCS1v15(), hashes.SHA1())
 
 	def test_the_numbers_come_from_the_settings_and_not_from_the_code(self):
@@ -319,3 +319,59 @@ class TestDemoLicence(FrappeTestCase):
 			"Comment", filters={"reference_name": self.lead.name, "content": ["like", "Демо-ліцензія%"]}
 		)
 		self.assertEqual(len(comments), 2)
+
+
+# The public key of the server 7.4 (Provider.cs of the product): it is public, the licence of the product is signed with its pair.
+SERVER_74_PUBLIC_KEY = "<RSAKeyValue><Modulus>wVhZnmq5nV81k8vR7oWPPOuLsKDuwfzeTxLyECp9MVkPY5QCPQ1KWLVMKvg1Ghv32Oc1frreHVWPxd6/yOHVCeAN+frde3ak3lTjLyIj4O+uEJ2DDji1X4qFHsRu9Y7uQZKSHLDtv5fUtcAmQ1KlidwxsF/fgRQOeBhZrddM/zqI20D7QBS5RdSjGqjLwPRKOaaFWJKHIxxuu8X+AYeCoxXEbqRojN8QId0/TXKmXWmgtcuH74pTCC2A3yBr+/DlADrd2VzUZzzOGuGk8f8cpQJaBN9KCBKeAz9yI0z++7cTnoNrOxqSqvRfp4nOOUN6PyYSlP3wwx8mT5UbY69X+Q==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>"
+
+
+class TestTheSignatureIsTheOneTheServerChecks(FrappeTestCase):
+	"""A licence that the generator of the product signed is the proof of what the server verifies: the shop's own
+	tests used the same library for the signing and the checking and let a form of the signature through that the
+	server refuses ("the integrity of the licence is violated")."""
+
+	@property
+	def NS(self):
+		return {"d": licensing.DSIG_NS}
+
+	def sample(self):
+		from pathlib import Path
+
+		data = (Path(__file__).parent / "fixtures" / "License.sample.xml").read_bytes()
+		return etree.fromstring(
+			data[3:], etree.XMLParser(remove_blank_text=True)
+		)  # .NET drops the blank text
+
+	def public_key(self):
+		from cryptography.hazmat.primitives.asymmetric import rsa
+
+		parts = {
+			e.tag: int.from_bytes(base64.b64decode(e.text), "big")
+			for e in etree.fromstring(SERVER_74_PUBLIC_KEY)
+		}
+		return rsa.RSAPublicNumbers(parts["Exponent"], parts["Modulus"]).public_key()
+
+	def test_the_signature_of_a_licence_of_the_generator_verifies_the_way_the_shop_signs(self):
+		from cryptography.hazmat.primitives import hashes
+		from cryptography.hazmat.primitives.asymmetric import padding
+
+		signature = self.sample().find("d:Signature", self.NS)
+		value = base64.b64decode(signature.findtext("d:SignatureValue", namespaces=self.NS))
+		canonical = etree.tostring(signature.find("d:SignedInfo", self.NS), method="c14n", exclusive=True)
+
+		self.public_key().verify(
+			value, canonical, padding.PKCS1v15(), hashes.SHA1()
+		)  # raises when it does not
+
+	def test_the_canonical_form_that_is_signed_has_no_stray_empty_namespaces(self):
+		spec = licensing.Spec(owner="Іван Петренко", users=5, version="7.4")
+		root = licensing.build_document(spec, "id-1")
+		from cryptography.hazmat.primitives.asymmetric import rsa
+
+		licensing.sign(root, rsa.generate_private_key(public_exponent=65537, key_size=2048))
+		signed_info = root.find("d:Signature/d:SignedInfo", self.NS)
+
+		self.assertNotIn(b'xmlns=""', etree.tostring(signed_info, method="c14n", exclusive=True))
+		self.assertIn(
+			b'xmlns=""', etree.tostring(signed_info, method="c14n")
+		)  # the form that must not be signed
