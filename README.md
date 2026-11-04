@@ -25,7 +25,7 @@ for a cancelled request. The shop therefore never replaces a payment in progress
 `overrides.make_payment_request` and by the order page). The wrapper covers a Sales Order and a Sales Invoice (the rule of
 the portal pages and the run as Administrator apply to both); the page asks for the same gateway account and amount.
 
-- **An open request** (docstatus 1, status `Requested`) of the same gateway account whose amount equals the remaining
+- **An open request** (docstatus 1, status `Requested` or `Initiated`) of the same gateway account whose amount equals the remaining
   amount is continued, not replaced: Pay (and "Продовжити оплату" in the notice) redirects to the same WayForPay page, the
   same reference (`/wayforpay_checkout?order=<Integration Request>`). The Integration Request is created when the payment
   page is rendered, so a customer who closed the bank page can always go on. When the request was started in the last 15

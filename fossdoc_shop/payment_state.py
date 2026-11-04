@@ -11,8 +11,9 @@ The functions that decide are plain Python (no Frappe import); the ones that rea
 import json
 from datetime import datetime, timedelta
 
-# The open state of a submitted Payment Request that the customer can still pay.
-OPEN_STATUSES = ("Requested",)
+# The open states of a submitted Payment Request that the customer can still pay (ERPNext sets Initiated when the
+# request has a payment url; it does not cancel such a request, it refuses a second one).
+OPEN_STATUSES = ("Requested", "Initiated")
 # The state of an Integration Request that waits for the bank.
 WAITING = ("Queued",)
 # A payment that was started this recently may be on the page of the bank or in its checks (the anti-fraud checks of

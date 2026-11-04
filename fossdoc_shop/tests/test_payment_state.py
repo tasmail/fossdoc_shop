@@ -51,7 +51,7 @@ class TestWindows(unittest.TestCase):
 		self.assertFalse(ps.is_answered(row, NOW))
 
 	def test_the_statuses_that_the_modules_use_exist_in_erpnext(self):
-		self.assertEqual(ps.OPEN_STATUSES, ("Requested",))
+		self.assertEqual(ps.OPEN_STATUSES, ("Requested", "Initiated"))
 		self.assertEqual(ps.WAITING, ("Queued",))
 
 
