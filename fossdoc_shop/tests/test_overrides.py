@@ -211,6 +211,69 @@ class TestCustomerContactConflict(FrappeTestCase):
 
 		log.assert_called_once()
 
+	def test_a_conflict_in_the_link_step_is_queued_again_and_is_not_an_error(self):
+		from erpnext.selling.doctype.customer.customer import Customer as ErpnextCustomer
+
+		from fossdoc_shop import overrides
+
+		def link_portal_users_to_contacts(*args):
+			raise frappe.TimestampMismatchError
+
+		customer = overrides.Customer({"doctype": "Customer", "customer_name": "Conflict Test"})
+		customer.name = "CUST-CONFLICT"
+
+		with (
+			patch.object(
+				ErpnextCustomer,
+				"on_update",
+				side_effect=lambda *args: link_portal_users_to_contacts(),
+			),
+			patch.object(frappe, "log_error") as log,
+			patch.object(frappe, "enqueue") as enqueue,
+		):
+			customer.on_update()
+
+		log.assert_not_called()
+		enqueue.assert_called_once()
+		self.assertEqual(enqueue.call_args.args, ("fossdoc_shop.overrides.link_portal_contacts",))
+		self.assertEqual(enqueue.call_args.kwargs["customer"], "CUST-CONFLICT")
+		self.assertTrue(enqueue.call_args.kwargs["enqueue_after_commit"])
+		self.assertTrue(enqueue.call_args.kwargs["deduplicate"])
+
+	def test_the_job_links_the_contacts_and_does_nothing_for_a_missing_customer(self):
+		from fossdoc_shop import overrides
+
+		with (
+			patch("erpnext.controllers.website_list_for_contact.link_portal_users_to_contacts") as link,
+			patch.object(frappe.db, "exists", return_value=False),
+		):
+			overrides.link_portal_contacts("CUST-GONE")
+		link.assert_not_called()
+
+		with (
+			patch("erpnext.controllers.website_list_for_contact.link_portal_users_to_contacts") as link,
+			patch.object(frappe.db, "exists", return_value=True),
+			patch.object(frappe, "get_doc", return_value="DOC"),
+		):
+			overrides.link_portal_contacts("CUST-1")
+			overrides.link_portal_contacts("CUST-1")  # idempotent: the step only adds the missing links
+		self.assertEqual(link.call_count, 2)
+		link.assert_called_with("DOC")
+
+	def test_a_conflict_in_the_job_asks_frappe_to_retry_it(self):
+		from fossdoc_shop import overrides
+
+		with (
+			patch(
+				"erpnext.controllers.website_list_for_contact.link_portal_users_to_contacts",
+				side_effect=frappe.TimestampMismatchError,
+			),
+			patch.object(frappe.db, "exists", return_value=True),
+			patch.object(frappe, "get_doc", return_value="DOC"),
+			self.assertRaises(frappe.RetryBackgroundJobError),
+		):
+			overrides.link_portal_contacts("CUST-1")
+
 	def test_the_class_of_the_customer_is_the_one_of_the_app(self):
 		from fossdoc_shop import overrides
 
