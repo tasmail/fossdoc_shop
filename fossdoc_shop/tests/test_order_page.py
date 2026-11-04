@@ -105,7 +105,9 @@ class TestStockTemplate(unittest.TestCase):
 		stock_file = Path(spec.origin).parent / "templates" / "pages" / "order.html"
 		if not stock_file.exists():
 			self.skipTest("Webshop has no such page")
-		pay = re.compile(r"\{% if enabled_checkout and (?:pay_amount|\(doc\.doctype).*?\{% endif %\}", re.DOTALL)
+		pay = re.compile(
+			r"\{% if enabled_checkout and (?:pay_amount|\(doc\.doctype).*?\{% endif %\}", re.DOTALL
+		)
 		copy = TEMPLATE.read_text().split("-#}\n", 1)[1]
 		self.assertEqual(pay.sub("PAY", copy, count=1), pay.sub("PAY", stock_file.read_text(), count=1))
 
