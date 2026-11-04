@@ -89,7 +89,10 @@ def make_payment_request(**args):
 	(payment_state.py): a payment that the bank is checking sends the customer back to the page of the document
 	with a notice and starts nothing, and an open request of the same gateway account and of the amount still owed
 	is not replaced: the customer goes to its payment page again (the same reference). Two presses at once are
-	serialised by a lock on the document, held until the commit that follows the new request. The stock code
+	serialised by a lock of the database connection on the document (payment_state.document_lock): after getting it
+	the transaction is ended, so that the reads that follow see the request that the first press committed, and
+	the lock is released after the commit that follows the new request. A press that waits too long is told that
+	the payment is in process. The stock code
 	cancels open requests only for the order type Shopping Cart, so only that call is redirected; a call with
 	loyalty points changes the amount, so while a payment is open it is refused with a message and not passed on.
 	"""
@@ -108,11 +111,19 @@ def make_payment_request(**args):
 	args.setdefault("recipient_id", user)
 	frappe.set_user("Administrator")
 	try:
-		# the second of two parallel presses waits here until the first has committed its request
-		frappe.db.get_value(order.doctype, order.name, "name", for_update=True)
-		if _payment_in_progress(payment_request, order, args):
-			return None
-		return payment_request.make_payment_request(**args)
+		with payment_state.document_lock(order.doctype, order.name) as got:
+			if not got:  # the other press is still at work: it is not an error, the payment is in process
+				frappe.local.response["type"] = "redirect"
+				frappe.local.response["location"] = payment_state.order_page_url(order.doctype, order.name)
+				return None
+			# nothing has been written: end the transaction so that the next reads (ours and the ones of ERPNext)
+			# start a new snapshot and see the request that the other press has committed
+			frappe.db.commit()
+			if _payment_in_progress(payment_request, order, args):
+				return None
+			result = payment_request.make_payment_request(**args)
+			frappe.db.commit()  # before the lock is released
+			return result
 	finally:
 		frappe.set_user(user)
 

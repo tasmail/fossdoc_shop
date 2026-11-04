@@ -8,7 +8,9 @@ longer exists. So an order whose payment is already in progress gets no second r
 The functions that decide are plain Python (no Frappe import); the ones that read the database import Frappe inside.
 """
 
+import hashlib
 import json
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 
 # The open states of a submitted Payment Request that the customer can still pay (ERPNext sets Initiated when the
@@ -25,6 +27,7 @@ DEFAULT_WINDOW = timedelta(seconds=86400)
 TOLERANCE = 0.005
 CHECKOUT_PATH = "/wayforpay_checkout?order={}"
 SERVICE = "WayForPay"
+LOCK_SECONDS = 30
 DOCTYPES = ("Sales Order", "Sales Invoice")
 
 # The bank has answered "in process" and the money may be on its way: nothing new is started.
@@ -176,3 +179,23 @@ def message(state: dict) -> str:
 		+ ". "
 		+ _("Ви можете продовжити оплату на тій самій сторінці банку.")
 	)
+
+
+@contextmanager
+def document_lock(doctype: str, name: str, timeout: int = LOCK_SECONDS):
+	"""A lock on the payment of a document that does not depend on the transaction; yields False on a timeout.
+
+	A row lock (FOR UPDATE) waits for the first press, but the reads that follow it still see the snapshot that the
+	transaction opened earlier and miss the request that the first press committed. This is the lock of MariaDB
+	(GET_LOCK) of the connection: the caller ends its transaction after getting it (nothing has been written), so the
+	next reads see everything that was committed, and commits before it is released.
+	"""
+	import frappe
+
+	key = "fds_pay:" + hashlib.sha1(f"{frappe.local.site}:{doctype}:{name}".encode()).hexdigest()
+	got = frappe.db.sql("SELECT GET_LOCK(%s, %s)", (key, timeout))[0][0] == 1
+	try:
+		yield got
+	finally:
+		if got:
+			frappe.db.sql("SELECT RELEASE_LOCK(%s)", (key,))

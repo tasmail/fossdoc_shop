@@ -13,9 +13,10 @@
 	<br>
 	<a href="/api/method/erpnext.accounts.doctype.payment_request.payment_request.make_payment_request?dn={{ doc.name }}&dt={{ doc.doctype }}&submit_doc=1&order_type=Shopping Cart"
 		class="btn btn-primary btn-sm mt-2" id="continue-payment"
-		data-wait="{{ _('Зачекайте…') }}" onclick="this.classList.add('disabled'); this.textContent = this.dataset.wait;">
+		data-wait="{{ _('Зачекайте…') }}">
 		{{ _("Продовжити оплату") }} {{ pay_amount_formatted }}
 	</a>
+	{% include "fossdoc_shop/templates/payment_links.html" %}
 	{% endif %}
 </div>
 {#- After a second press of Pay the shop sends the customer here (?payment=processing): a pop-up says it once more. -#}

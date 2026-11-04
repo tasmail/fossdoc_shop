@@ -1,0 +1,24 @@
+{#- The Pay and Continue links protect themselves against a second press (a double click, Enter) and come back after the
+	Back button (bfcache restores the page as it was left, with the link disabled). -#}
+<script>
+	(function () {
+		document.querySelectorAll("a[data-wait]").forEach(function (link) {
+			var text = link.textContent;
+			link.addEventListener("click", function (event) {
+				if (link.getAttribute("aria-disabled") === "true") {
+					event.preventDefault();
+					return;
+				}
+				link.setAttribute("aria-disabled", "true");
+				link.classList.add("disabled");
+				link.textContent = link.dataset.wait;
+			});
+			window.addEventListener("pageshow", function (event) {
+				if (!event.persisted) return;
+				link.removeAttribute("aria-disabled");
+				link.classList.remove("disabled");
+				link.textContent = text;
+			});
+		});
+	})();
+</script>

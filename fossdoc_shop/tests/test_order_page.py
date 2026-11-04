@@ -100,8 +100,14 @@ class TestTemplate(unittest.TestCase):
 
 	def test_the_links_disable_themselves_on_a_click_and_the_popup_is_shown_once(self):
 		notice = (TEMPLATE.parents[1] / "payment_notice.html").read_text()
-		self.assertIn("classList.add('disabled')", self.text)
-		self.assertIn("classList.add('disabled')", notice)
+		links = (TEMPLATE.parents[1] / "payment_links.html").read_text()
+		for text in (self.text, notice):
+			self.assertIn("data-wait=", text)
+			self.assertIn("payment_links.html", text)
+		self.assertIn("pageshow", links)
+		self.assertIn("event.persisted", links)
+		self.assertIn("aria-disabled", links)
+		self.assertIn("preventDefault", links)
 		self.assertIn("history.replaceState", notice)
 		self.assertIn('notice.dataset.state !== "processing"', notice)
 

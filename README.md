@@ -42,9 +42,27 @@ the portal pages and the run as Administrator apply to both); the page asks for 
   differ and ERPNext would cancel the open request).
 - Only the order type Shopping Cart is redirected: `cancel_old_payment_requests` of ERPNext runs only in that branch;
   the other order types subtract the open amount and cancel nothing.
-- Two presses at once are serialised: the wrapper locks the document row (`SELECT ... FOR UPDATE`) before the check, and
-  the lock is held until the commit that follows the new request or the redirect. The links also disable themselves on
-  the first click.
+- Two presses at once are serialised by a lock of the database connection on the document (`GET_LOCK` of MariaDB, keyed
+  by site, doctype and name; `payment_state.document_lock`). A row lock (`FOR UPDATE`) is not enough: it waits for the
+  first press, but the reads that follow still see the snapshot that the transaction opened earlier (REPEATABLE READ)
+  and miss the request that the first press committed. So after getting the lock the wrapper ends its transaction
+  (nothing has been written), looks at the open requests, calls ERPNext or redirects, commits and only then releases the
+  lock (in a `finally`, on every path). A press that cannot get the lock in 30 seconds is sent to the page of the document
+  with the "in process" notice, not to an error. The order of these calls is asserted in `tests/test_overrides.py`.
+- The links disable themselves on the first click (`aria-disabled`, a repeated click or Enter is ignored) and come back
+  when the page is restored by the Back button (`pageshow` with `persisted`), see `templates/payment_links.html`.
+- The refusal of a call with loyalty points names the open payment and asks to finish it first; it does not promise the
+  same page, because that call changes the amount.
+- **Unverified: the same reference opened again.** "Continue" opens the page of the same Integration Request, i.e. the
+  same `orderReference`, but `payment_form` of the wayforpay app signs a new `orderDate` (the current time) on every
+  render. The Purchase page of WayForPay (wiki.wayforpay.com, checked) defines `orderReference` as "unique number of the
+  order in merchant's system", `orderDate` as "date of order placing" and `orderTimeout` as "the interval within which the
+  order can be paid, in seconds"; it says nothing about a repeated `orderReference`, about a changed `orderDate`, or about
+  what `orderTimeout` counts from. So it is not known whether the gateway accepts the second render, and whether the
+  timeout runs from the first date. Check it on the test merchant (open the continue link after the first page) before
+  relying on it. If it is rejected, the minimal change belongs to the wayforpay app and is not made here: store the first
+  `orderDate` in the data of the Integration Request when the form is first built and sign that value again in
+  `checkout.payment_form` (and send `orderTimeout` as the time left); the shop code does not change.
 - After payment the page shows "Paid".
 
 The texts are Ukrainian source strings translated by `translations/en.csv` and `translations/ru.csv`. The decision
