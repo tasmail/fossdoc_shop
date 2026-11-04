@@ -83,24 +83,52 @@ class TestDownloadPdf(FrappeTestCase):
 
 
 class TestMakePaymentRequest(FrappeTestCase):
-	def run_it(self, allowed, **args):
+	@staticmethod
+	def document(doctype, name):
+		document = MagicMock(doctype=doctype)
+		document.name = name
+		return document
+
+	def run_it(self, allowed, state=None, got_lock=1, fail=False, **args):
 		"""Call the override with the endpoint of ERPNext and the rule of the portal replaced by doubles."""
 		users = []
+		self.events = events = []
 		with (
-			patch("frappe.get_doc", return_value=MagicMock()),
+			patch("frappe.get_doc", side_effect=lambda dt, dn: self.document(dt, dn)),
 			patch(
 				"erpnext.controllers.website_list_for_contact.has_website_permission", return_value=allowed
 			) as rule,
 			patch(
 				"erpnext.accounts.doctype.payment_request.payment_request.make_payment_request"
 			) as original,
+			patch("erpnext.accounts.doctype.payment_request.payment_request.get_gateway_details"),
+			patch("erpnext.accounts.doctype.payment_request.payment_request.get_amount", return_value=45.67),
+			patch(
+				"fossdoc_shop.overrides.payment_state.state_of",
+				side_effect=lambda *a: events.append("state_of") or state,
+			) as looked_at,
+			patch(
+				"frappe.db.sql",
+				side_effect=lambda query, *a: events.append(query.split("(")[0]) or [[got_lock]],
+			),
+			patch("frappe.db.commit", side_effect=lambda: events.append("commit")),
 		):
-			original.side_effect = lambda **kw: users.append(frappe.session.user) or "PR"
+
+			def stock(**kw):
+				events.append("stock")
+				users.append(frappe.session.user)
+				if fail:
+					raise frappe.ValidationError("boom")
+				return "PR"
+
+			original.side_effect = stock
 			try:
 				result = make_payment_request(**args)
-			except frappe.PermissionError:
+			except (frappe.PermissionError, frappe.ValidationError):
 				result = "refused"
-		return SimpleNamespace(result=result, original=original, rule=rule, users=users)
+		return SimpleNamespace(
+			result=result, original=original, rule=rule, users=users, state_of=looked_at, events=events
+		)
 
 	def test_the_customer_of_the_order_pays_it_and_the_endpoint_of_erpnext_runs_with_the_rights_it_needs(
 		self,
@@ -125,12 +153,122 @@ class TestMakePaymentRequest(FrappeTestCase):
 		self.assertEqual(done.result, "refused")
 		done.original.assert_not_called()
 
-	def test_other_documents_go_to_the_endpoint_of_erpnext_as_they_are(self):
-		done = self.run_it(False, dt="Sales Invoice", dn="SINV-1")
+	def test_a_payment_in_the_hands_of_the_bank_starts_nothing_and_goes_back_to_the_order_page(self):
+		frappe.local.response = frappe._dict()
+		state = {"state": "processing", "request": "PRQ-1", "irequest": None}
+
+		done = self.run_it(True, state, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart")
+
+		self.assertIsNone(done.result)
+		done.original.assert_not_called()  # ERPNext would cancel the open request
+		self.assertEqual(frappe.local.response["type"], "redirect")
+		self.assertTrue(frappe.local.response["location"].endswith("/orders/SAL-1?payment=processing"))
+
+	def test_an_open_request_is_not_replaced_and_the_customer_goes_to_its_payment_page(self):
+		frappe.local.response = frappe._dict()
+		state = {"state": "continue", "request": "PRQ-1", "irequest": "WFP-1"}
+
+		done = self.run_it(True, state, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart")
+
+		self.assertIsNone(done.result)
+		done.original.assert_not_called()
+		self.assertTrue(frappe.local.response["location"].endswith("/wayforpay_checkout?order=WFP-1"))
+
+	def test_without_a_payment_in_progress_erpnext_makes_the_request(self):
+		done = self.run_it(True, None, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart")
 
 		self.assertEqual(done.result, "PR")
-		done.original.assert_called_once_with(dt="Sales Invoice", dn="SINV-1")
+		done.original.assert_called_once()
+
+	def test_the_cart_with_loyalty_points_is_refused_while_a_payment_is_open(self):
+		state = {"state": "processing", "request": "PRQ-1", "irequest": None}
+		cart = {"dt": "Sales Order", "dn": "SAL-1", "order_type": "Shopping Cart", "loyalty_points": 5}
+
+		done = self.run_it(True, state, **cart)
+		self.assertEqual(done.result, "refused")  # a message, and ERPNext would cancel the open request
+		done.original.assert_not_called()
+
+		self.assertEqual(self.run_it(True, None, **cart).result, "PR")  # nothing open: the stock rules apply
+
+	def test_only_the_cart_is_redirected_because_only_the_cart_cancels_open_requests(self):
+		state = {"state": "processing", "request": "PRQ-1", "irequest": None}
+
+		done = self.run_it(True, state, dt="Sales Order", dn="SAL-1")
+
+		self.assertEqual(done.result, "PR")
+		done.state_of.assert_not_called()
+
+	def test_a_sales_invoice_is_guarded_like_a_sales_order(self):
+		frappe.local.response = frappe._dict()
+		state = {"state": "processing", "request": "PRQ-1", "irequest": None}
+
+		done = self.run_it(True, state, dt="Sales Invoice", dn="SINV-1", order_type="Shopping Cart")
+
+		self.assertIsNone(done.result)
+		done.original.assert_not_called()
+		done.rule.assert_called_once()
+		self.assertTrue(frappe.local.response["location"].endswith("/invoices/SINV-1?payment=processing"))
+		self.assertEqual(self.run_it(False, None, dt="Sales Invoice", dn="SINV-1").result, "refused")
+
+	def test_the_lock_is_taken_first_the_snapshot_renewed_and_the_lock_released_after_the_commit(self):
+		done = self.run_it(True, None, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart")
+
+		self.assertEqual(done.result, "PR")
+		self.assertEqual(
+			done.events,
+			["SELECT GET_LOCK", "commit", "state_of", "stock", "commit", "SELECT RELEASE_LOCK"],
+		)
+
+	def test_the_lock_is_released_after_the_redirect_and_when_the_stock_call_fails(self):
+		frappe.local.response = frappe._dict()
+		state = {"state": "processing", "request": "PRQ-1", "irequest": None}
+
+		done = self.run_it(True, state, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart")
+		self.assertEqual(done.events[0], "SELECT GET_LOCK")
+		self.assertEqual(done.events[-1], "SELECT RELEASE_LOCK")
+		self.assertNotIn("stock", done.events)
+
+		done = self.run_it(True, None, fail=True, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart")
+		self.assertEqual(done.result, "refused")
+		self.assertEqual(done.events[-1], "SELECT RELEASE_LOCK")
+		self.assertEqual(frappe.session.user, "Administrator")  # the session is given back
+
+	def test_nothing_is_committed_after_a_failed_stock_call(self):
+		done = self.run_it(True, None, fail=True, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart")
+
+		self.assertEqual(
+			done.events, ["SELECT GET_LOCK", "commit", "state_of", "stock", "SELECT RELEASE_LOCK"]
+		)
+
+	def test_a_press_that_waits_too_long_is_told_that_the_payment_is_in_process(self):
+		frappe.local.response = frappe._dict()
+
+		done = self.run_it(True, None, got_lock=0, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart")
+
+		self.assertIsNone(done.result)
+		done.original.assert_not_called()
+		self.assertEqual(done.events, ["SELECT GET_LOCK"])  # nothing was read, and nothing is released
+		self.assertTrue(frappe.local.response["location"].endswith("/orders/SAL-1?payment=processing"))
+
+	def test_a_lock_that_the_database_answers_with_null_is_a_timeout_too(self):
+		frappe.local.response = frappe._dict()
+
+		done = self.run_it(
+			True, None, got_lock=None, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart"
+		)
+
+		self.assertIsNone(done.result)
+		done.original.assert_not_called()
+		self.assertEqual(done.events, ["SELECT GET_LOCK"])
+		self.assertTrue(frappe.local.response["location"].endswith("/orders/SAL-1?payment=processing"))
+
+	def test_other_documents_go_to_the_endpoint_of_erpnext_as_they_are(self):
+		done = self.run_it(False, dt="Purchase Order", dn="PO-1")
+
+		self.assertEqual(done.result, "PR")
+		done.original.assert_called_once_with(dt="Purchase Order", dn="PO-1")
 		done.rule.assert_not_called()
+		self.assertNotIn("SELECT GET_LOCK", done.events)
 
 	def test_the_hook_points_at_the_override(self):
 		from fossdoc_shop import hooks

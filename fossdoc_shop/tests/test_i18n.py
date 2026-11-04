@@ -121,3 +121,20 @@ class TestOrders(FrappeTestCase):
 
 		self.assertEqual(buyer.language, "ru")
 		self.assertIsNone(manager.language)
+
+
+class TestPaymentInProgressTexts(FrappeTestCase):
+	def test_the_notice_of_a_payment_in_progress_is_translated(self):
+		use_language(self, "en")
+		self.assertEqual(_("Продовжити оплату"), "Continue the payment")
+		self.assertEqual(
+			_("Оплата цього замовлення вже розпочата"), "Payment for this order has already been started"
+		)
+		use_language(self, "ru")
+		self.assertEqual(_("Продовжити оплату"), "Продолжить оплату")
+		self.assertIn(
+			"Не оплачивайте повторно",
+			_(
+				"Оплата обробляється банком, підтвердження може надійти не одразу. Після підтвердження вам буде надіслано лист. Не оплачуйте повторно."
+			),
+		)

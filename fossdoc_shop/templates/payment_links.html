@@ -1,0 +1,35 @@
+{#- The Pay and Continue links protect themselves against a second press (a double click, Enter) and come back after the
+	Back button (bfcache restores the page as it was left, with the link disabled). -#}
+<script>
+	(function () {
+		document.querySelectorAll("a[data-wait]").forEach(function (link) {
+			var text = link.textContent;
+			var timer = null;
+			function restore() {
+				clearTimeout(timer);
+				link.removeAttribute("aria-disabled");
+				link.classList.remove("disabled");
+				link.textContent = text;
+			}
+			link.addEventListener("click", function (event) {
+				if (link.getAttribute("aria-disabled") === "true") {
+					event.preventDefault();
+					return;
+				}
+				// a click that opens a new tab or window leaves this page where it is: nothing to protect
+				if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+				link.setAttribute("aria-disabled", "true");
+				link.classList.add("disabled");
+				link.textContent = link.dataset.wait;
+				// the navigation may be cancelled or never happen: the link comes back after a while
+				timer = setTimeout(restore, 10000);
+			});
+			document.addEventListener("visibilitychange", function () {
+				if (document.visibilityState === "visible" && link.getAttribute("aria-disabled") === "true") restore();
+			});
+			window.addEventListener("pageshow", function (event) {
+				if (event.persisted) restore();
+			});
+		});
+	})();
+</script>
