@@ -77,26 +77,29 @@ def download_pdf(
 def make_payment_request(**args):
 	"""Let the customer of a sales order pay it: the Pay button of the order page of the portal.
 
-	ERPNext checks that the user may create a Payment Request and read the sales order, and no role of a portal
+	ERPNext checks that the user may create a Payment Request and read the document, and no role of a portal
 	user has those rights (the portal pages are opened by the link of the user to the customer, not by a role),
-	so the button ends with Not permitted. For a sales order the call is allowed to the user whose customer owns
-	the order (the rule of the portal pages) and runs as the administrator for the time of the call; for any
-	other document the endpoint of ERPNext is called as it is.
+	so the button ends with Not permitted. For a sales order or a sales invoice the call is allowed to the user
+	whose customer owns the document (the rule of the portal pages) and runs as the administrator for the time of
+	the call; for any other document the endpoint of ERPNext is called as it is.
 
 	A payment that is already in progress is never replaced. When the customer presses Pay again, ERPNext cancels
 	the open Payment Request and makes a new one, and a customer who pays on the first page of the gateway has paid
-	for a cancelled request. So, before ERPNext is called, the open requests of the order are looked at
-	(payment_state.py): a payment in the hands of the bank sends the customer back to the order page with a notice
-	and starts nothing, and an open request of the same gateway account and of the amount still owed is not
-	replaced: the customer goes to its payment page again (the same reference).
+	for a cancelled request. So, before ERPNext is called, the open requests of the document are looked at
+	(payment_state.py): a payment that the bank is checking sends the customer back to the page of the document
+	with a notice and starts nothing, and an open request of the same gateway account and of the amount still owed
+	is not replaced: the customer goes to its payment page again (the same reference). Two presses at once are
+	serialised by a lock on the document, held until the commit that follows the new request. The stock code
+	cancels open requests only for the order type Shopping Cart, so only that call is redirected; a call with
+	loyalty points changes the amount, so while a payment is open it is refused with a message and not passed on.
 	"""
 	from erpnext.accounts.doctype.payment_request import payment_request
 	from erpnext.controllers.website_list_for_contact import has_website_permission
 
-	if args.get("dt") != "Sales Order" or not isinstance(args.get("dn"), str):
+	if args.get("dt") not in payment_state.DOCTYPES or not isinstance(args.get("dn"), str):
 		return payment_request.make_payment_request(**args)
 
-	order = frappe.get_doc("Sales Order", args["dn"])
+	order = frappe.get_doc(args["dt"], args["dn"])
 	if not has_website_permission(order, "read", frappe.session.user):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 	user = frappe.session.user
@@ -105,6 +108,8 @@ def make_payment_request(**args):
 	args.setdefault("recipient_id", user)
 	frappe.set_user("Administrator")
 	try:
+		# the second of two parallel presses waits here until the first has committed its request
+		frappe.db.get_value(order.doctype, order.name, "name", for_update=True)
 		if _payment_in_progress(payment_request, order, args):
 			return None
 		return payment_request.make_payment_request(**args)
@@ -115,20 +120,24 @@ def make_payment_request(**args):
 def _payment_in_progress(payment_request, order, args) -> bool:
 	"""Send the customer to the payment that is already in progress; False when a new request may be made.
 
-	The answer is a redirect, like the one of ERPNext to the gateway: to the order page, which says that the bank
-	is processing the payment, or to the payment page of the open request.
+	The answer is a redirect, like the one of ERPNext to the gateway: to the page of the document, which says that
+	the bank is checking the payment, or to the payment page of the open request.
 	"""
-	if args.get("order_type") != "Shopping Cart" or args.get("loyalty_points"):
+	account = payment_state.gateway_account(args.get("company") or order.company, args)
+	if args.get("loyalty_points"):
+		state = payment_state.state_of(order.doctype, order.name)
+		if state:
+			frappe.throw(payment_state.message(state))
 		return False
-	company = args.get("company") or order.company
-	account = payment_request.get_gateway_details(frappe._dict(args, company=company)) or {}
+	if args.get("order_type") != "Shopping Cart":
+		return False
 	amount = payment_request.get_amount(order, account.get("payment_account"))
-	state = payment_state.state_of(order.name, amount, account.get("name"))
+	state = payment_state.state_of(order.doctype, order.name, amount, account.get("name"))
 	if not state:
 		return False
 	frappe.local.response["type"] = "redirect"
 	if state["state"] == payment_state.PROCESSING:
-		frappe.local.response["location"] = payment_state.order_page_url(order.name)
+		frappe.local.response["location"] = payment_state.order_page_url(order.doctype, order.name)
 	else:
 		frappe.local.response["location"] = payment_state.page_url(state)
 	frappe.db.commit()  # the page of a new payment of the open request is an Integration Request that stays

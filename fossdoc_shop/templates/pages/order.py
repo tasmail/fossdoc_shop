@@ -55,6 +55,8 @@ def get_context(context):
 	from frappe.utils import fmt_money
 	from webshop.templates.pages.order import get_context as stock_get_context
 
+	from fossdoc_shop import payment_state
+
 	stock_get_context(context)
 
 	doc = context.doc
@@ -64,10 +66,13 @@ def get_context(context):
 	)
 	# a payment that is in progress is not started again: the button gives way to a notice
 	context.pay_state = None
-	if context.pay_amount and doc.doctype == "Sales Order":
-		from fossdoc_shop import payment_state
-
-		context.pay_state = (payment_state.state_of(doc.name, context.pay_amount) or {}).get("state")
+	context.pay_recent = False
+	if context.pay_amount and doc.doctype in payment_state.DOCTYPES:
+		# the same account and amount as the wrapper (overrides.make_payment_request), so both agree on the state
+		account = payment_state.gateway_account(doc.company)
+		state = payment_state.state_of(doc.doctype, doc.name, context.pay_amount, account.get("name")) or {}
+		context.pay_state = state.get("state")
+		context.pay_recent = bool(state.get("recent"))
 	# the status of a paid order does not say it ("To Deliver and Bill"); the status of an invoice does
 	context.is_paid = bool(
 		doc.doctype == "Sales Order"

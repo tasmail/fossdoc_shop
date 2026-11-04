@@ -5,10 +5,15 @@
 	{% if pay_state == "processing" %}
 	<br>{{ _("Оплата обробляється банком, підтвердження може надійти не одразу. Після підтвердження вам буде надіслано лист. Не оплачуйте повторно.") }}
 	{% else %}
+	{% if pay_recent %}
+	<br>{{ _("Оплату розпочато щойно. Якщо ви вже оплатили, підтвердження може надійти не одразу, лист буде надіслано, не оплачуйте повторно. Якщо ні, продовжте оплату на тій самій сторінці банку.") }}
+	{% else %}
 	<br>{{ _("Ви можете продовжити оплату на тій самій сторінці банку.") }}
+	{% endif %}
 	<br>
 	<a href="/api/method/erpnext.accounts.doctype.payment_request.payment_request.make_payment_request?dn={{ doc.name }}&dt={{ doc.doctype }}&submit_doc=1&order_type=Shopping Cart"
-		class="btn btn-primary btn-sm mt-2" id="continue-payment">
+		class="btn btn-primary btn-sm mt-2" id="continue-payment"
+		data-wait="{{ _('Зачекайте…') }}" onclick="this.classList.add('disabled'); this.textContent = this.dataset.wait;">
 		{{ _("Продовжити оплату") }} {{ pay_amount_formatted }}
 	</a>
 	{% endif %}
@@ -16,7 +21,13 @@
 {#- After a second press of Pay the shop sends the customer here (?payment=processing): a pop-up says it once more. -#}
 <script>
 	window.addEventListener("load", function () {
-		if (!window.frappe || !frappe.msgprint || new URLSearchParams(window.location.search).get("payment") !== "processing") return;
+		var notice = document.getElementById("payment-in-progress");
+		var query = new URLSearchParams(window.location.search);
+		if (query.get("payment") !== "processing") return;
+		// shown once: a reload of the page does not show it again
+		query.delete("payment");
+		history.replaceState(null, "", window.location.pathname + (query.toString() ? "?" + query : ""));
+		if (!window.frappe || !frappe.msgprint || !notice || notice.dataset.state !== "processing") return;
 		frappe.msgprint({
 			title: {{ _("Оплата цього замовлення вже розпочата")|tojson }},
 			message: {{ _("Оплата обробляється банком, підтвердження може надійти не одразу. Після підтвердження вам буде надіслано лист. Не оплачуйте повторно.")|tojson }},

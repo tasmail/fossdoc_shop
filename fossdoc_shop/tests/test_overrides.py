@@ -83,11 +83,17 @@ class TestDownloadPdf(FrappeTestCase):
 
 
 class TestMakePaymentRequest(FrappeTestCase):
+	@staticmethod
+	def document(doctype, name):
+		document = MagicMock(doctype=doctype)
+		document.name = name
+		return document
+
 	def run_it(self, allowed, state=None, **args):
 		"""Call the override with the endpoint of ERPNext and the rule of the portal replaced by doubles."""
 		users = []
 		with (
-			patch("frappe.get_doc", return_value=MagicMock()),
+			patch("frappe.get_doc", side_effect=lambda dt, dn: self.document(dt, dn)),
 			patch(
 				"erpnext.controllers.website_list_for_contact.has_website_permission", return_value=allowed
 			) as rule,
@@ -96,14 +102,17 @@ class TestMakePaymentRequest(FrappeTestCase):
 			) as original,
 			patch("erpnext.accounts.doctype.payment_request.payment_request.get_gateway_details"),
 			patch("erpnext.accounts.doctype.payment_request.payment_request.get_amount", return_value=45.67),
-			patch("fossdoc_shop.overrides.payment_state.state_of", return_value=state),
+			patch("fossdoc_shop.overrides.payment_state.state_of", return_value=state) as looked_at,
+			patch("frappe.db.get_value") as lock,
 		):
 			original.side_effect = lambda **kw: users.append(frappe.session.user) or "PR"
 			try:
 				result = make_payment_request(**args)
-			except frappe.PermissionError:
+			except (frappe.PermissionError, frappe.ValidationError):
 				result = "refused"
-		return SimpleNamespace(result=result, original=original, rule=rule, users=users)
+		return SimpleNamespace(
+			result=result, original=original, rule=rule, users=users, state_of=looked_at, lock=lock
+		)
 
 	def test_the_customer_of_the_order_pays_it_and_the_endpoint_of_erpnext_runs_with_the_rights_it_needs(
 		self,
@@ -155,22 +164,49 @@ class TestMakePaymentRequest(FrappeTestCase):
 		self.assertEqual(done.result, "PR")
 		done.original.assert_called_once()
 
-	def test_the_check_is_for_the_cart_only_and_not_for_loyalty_points(self):
+	def test_the_cart_with_loyalty_points_is_refused_while_a_payment_is_open(self):
+		state = {"state": "processing", "request": "PRQ-1", "irequest": None}
+		cart = {"dt": "Sales Order", "dn": "SAL-1", "order_type": "Shopping Cart", "loyalty_points": 5}
+
+		done = self.run_it(True, state, **cart)
+		self.assertEqual(done.result, "refused")  # a message, and ERPNext would cancel the open request
+		done.original.assert_not_called()
+
+		self.assertEqual(self.run_it(True, None, **cart).result, "PR")  # nothing open: the stock rules apply
+
+	def test_only_the_cart_is_redirected_because_only_the_cart_cancels_open_requests(self):
 		state = {"state": "processing", "request": "PRQ-1", "irequest": None}
 
-		done = self.run_it(
-			True, state, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart", loyalty_points=5
-		)
-
-		self.assertEqual(done.result, "PR")  # the amount differs, the stock rules apply
-		self.assertEqual(self.run_it(True, state, dt="Sales Order", dn="SAL-1").result, "PR")
-
-	def test_other_documents_go_to_the_endpoint_of_erpnext_as_they_are(self):
-		done = self.run_it(False, dt="Sales Invoice", dn="SINV-1")
+		done = self.run_it(True, state, dt="Sales Order", dn="SAL-1")
 
 		self.assertEqual(done.result, "PR")
-		done.original.assert_called_once_with(dt="Sales Invoice", dn="SINV-1")
+		done.state_of.assert_not_called()
+
+	def test_a_sales_invoice_is_guarded_like_a_sales_order(self):
+		frappe.local.response = frappe._dict()
+		state = {"state": "processing", "request": "PRQ-1", "irequest": None}
+
+		done = self.run_it(True, state, dt="Sales Invoice", dn="SINV-1", order_type="Shopping Cart")
+
+		self.assertIsNone(done.result)
+		done.original.assert_not_called()
+		done.rule.assert_called_once()
+		self.assertTrue(frappe.local.response["location"].endswith("/invoices/SINV-1?payment=processing"))
+		self.assertEqual(self.run_it(False, None, dt="Sales Invoice", dn="SINV-1").result, "refused")
+
+	def test_the_document_is_locked_before_the_open_requests_are_looked_at(self):
+		done = self.run_it(True, None, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart")
+
+		self.assertEqual(done.result, "PR")
+		done.lock.assert_called_once_with("Sales Order", "SAL-1", "name", for_update=True)
+
+	def test_other_documents_go_to_the_endpoint_of_erpnext_as_they_are(self):
+		done = self.run_it(False, dt="Purchase Order", dn="PO-1")
+
+		self.assertEqual(done.result, "PR")
+		done.original.assert_called_once_with(dt="Purchase Order", dn="PO-1")
 		done.rule.assert_not_called()
+		done.lock.assert_not_called()
 
 	def test_the_hook_points_at_the_override(self):
 		from fossdoc_shop import hooks

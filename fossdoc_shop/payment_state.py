@@ -11,21 +11,24 @@ The functions that decide are plain Python (no Frappe import); the ones that rea
 import json
 from datetime import datetime, timedelta
 
-# The open states of a submitted Payment Request that the customer can still pay.
-OPEN_STATUSES = ("Requested", "Pending")
-# The states of an Integration Request that wait for the bank.
-WAITING = ("Queued", "Pending")
+# The open state of a submitted Payment Request that the customer can still pay.
+OPEN_STATUSES = ("Requested",)
+# The state of an Integration Request that waits for the bank.
+WAITING = ("Queued",)
 # A payment that was started this recently may be on the page of the bank or in its checks (the anti-fraud checks of
-# WayForPay can take more than ten minutes), so it is "in process" even before the bank says anything.
+# WayForPay can take more than ten minutes). It decides only which text the customer reads (`recent`).
 RECENT = timedelta(minutes=15)
-# A payment that the bank has answered "in process" stays so until the order of the gateway expires (the
-# orderTimeout of WayForPay, a day); after that the notification or the check of the state has settled it.
-ANSWERED = timedelta(hours=24)
+# The default life of an order at the gateway, the orderTimeout of the WayForPay Settings (checkout.py of the
+# wayforpay app uses `order_timeout or 86400`); the real value is read by order_window().
+DEFAULT_WINDOW = timedelta(seconds=86400)
 TOLERANCE = 0.005
 CHECKOUT_PATH = "/wayforpay_checkout?order={}"
 SERVICE = "WayForPay"
+DOCTYPES = ("Sales Order", "Sales Invoice")
 
+# The bank has answered "in process" and the money may be on its way: nothing new is started.
 PROCESSING = "processing"
+# An open request that the customer can continue on the same payment page.
 CONTINUE = "continue"
 
 
@@ -38,15 +41,17 @@ def _answered(irequest: dict) -> bool:
 	return bool(isinstance(output, dict) and output.get("transactionStatus"))
 
 
-def is_processing(irequest: dict, now: datetime) -> bool:
-	"""True when the payment of an Integration Request may be in the hands of the bank."""
-	if irequest.get("status") not in WAITING:
-		return False
-	age = now - irequest["creation"]
-	return age <= RECENT or (_answered(irequest) and age <= ANSWERED)
+def is_answered(irequest: dict, now: datetime, window: timedelta = DEFAULT_WINDOW) -> bool:
+	"""True when the bank said "in process" about a payment that still waits and whose order has not expired."""
+	return irequest.get("status") in WAITING and _answered(irequest) and now - irequest["creation"] <= window
 
 
-def reusable_page(irequests: list[dict], now: datetime) -> str | None:
+def is_recent(irequest: dict, now: datetime) -> bool:
+	"""True when a payment that still waits was started in the last minutes (the customer may have paid already)."""
+	return irequest.get("status") in WAITING and now - irequest["creation"] <= RECENT
+
+
+def reusable_page(irequests: list[dict], now: datetime, window: timedelta = DEFAULT_WINDOW) -> str | None:
 	"""The name of the Integration Request whose payment page the customer can open again (the newest), or None.
 
 	It is a request that still waits and whose order at the gateway has not expired; its name is the reference of
@@ -56,45 +61,73 @@ def reusable_page(irequests: list[dict], now: datetime) -> str | None:
 		if (
 			irequest.get("status") in WAITING
 			and irequest.get("service", SERVICE) == SERVICE
-			and now - irequest["creation"] < ANSWERED
+			and now - irequest["creation"] < window
 		):
 			return irequest["name"]
 	return None
 
 
-def classify(requests: list[dict], now: datetime, amount=None, gateway_account=None) -> dict | None:
+def classify(
+	requests: list[dict], now: datetime, amount=None, gateway_account=None, window: timedelta = DEFAULT_WINDOW
+) -> dict | None:
 	"""The state of the payment from the open Payment Requests (newest first) and their Integration Requests.
 
-	Each request is a dict with `name`, `grand_total`, `payment_gateway_account` and `irequests`. A payment in the
-	hands of the bank wins over everything (whatever the amount: the money may be on its way). Otherwise an open
-	request of the same gateway account and of the amount that is still owed is continued. Anything else is None, and
-	the caller starts a new request.
+	Each request is a dict with `name`, `grand_total`, `payment_gateway_account` and `irequests`.
+	- A payment that the bank answered "in process" is PROCESSING, whatever the amount (the money may be on its way).
+	- An open request of the same gateway account and of the amount that is still owed is CONTINUE on its payment
+	  page; `recent` tells that it was started in the last minutes, so the customer may have paid already.
+	- A recent request that does not fit (another amount or account) is PROCESSING too: it must not be cancelled.
+	- Anything else is None, and the caller starts a new request.
 	"""
 	for request in requests:
-		if any(is_processing(irequest, now) for irequest in request["irequests"]):
-			return {"state": PROCESSING, "request": request["name"], "irequest": None}
+		if any(is_answered(irequest, now, window) for irequest in request["irequests"]):
+			return {"state": PROCESSING, "request": request["name"], "irequest": None, "recent": True}
 	for request in requests:
-		if amount is not None and abs(float(request["grand_total"] or 0) - float(amount)) >= TOLERANCE:
-			continue
-		if gateway_account and request.get("payment_gateway_account") != gateway_account:
-			continue
-		return {
-			"state": CONTINUE,
-			"request": request["name"],
-			"irequest": reusable_page(request["irequests"], now),
-		}
+		recent = any(is_recent(irequest, now) for irequest in request["irequests"])
+		fits = (amount is None or abs(float(request["grand_total"] or 0) - float(amount)) < TOLERANCE) and (
+			not gateway_account or request.get("payment_gateway_account") == gateway_account
+		)
+		if fits:
+			return {
+				"state": CONTINUE,
+				"request": request["name"],
+				"irequest": reusable_page(request["irequests"], now, window),
+				"recent": recent,
+			}
+		if recent:
+			return {"state": PROCESSING, "request": request["name"], "irequest": None, "recent": True}
 	return None
 
 
-def state_of(order: str, amount=None, gateway_account=None) -> dict | None:
-	"""The state of the payment of a sales order (see classify); reads the database."""
+def order_window():
+	"""How long an order lives at the gateway: the longest orderTimeout of the WayForPay Settings, or a day."""
+	import frappe
+	from frappe.utils import cint
+
+	try:
+		seconds = [cint(value) for value in frappe.get_all("WayForPay Settings", pluck="order_timeout")]
+	except Exception:  # noqa: BLE001 - a site without the gateway app has no such doctype
+		seconds = []
+	return timedelta(seconds=max(seconds + [0]) or 86400)
+
+
+def gateway_account(company: str, args: dict | None = None) -> dict:
+	"""The Payment Gateway Account (name, payment_account) that make_payment_request of ERPNext would use."""
+	import frappe
+	from erpnext.accounts.doctype.payment_request import payment_request
+
+	return payment_request.get_gateway_details(frappe._dict(args or {}, company=company)) or {}
+
+
+def state_of(doctype: str, name: str, amount=None, account=None) -> dict | None:
+	"""The state of the payment of a sales order or invoice (see classify); reads the database."""
 	import frappe
 
 	requests = frappe.get_all(
 		"Payment Request",
 		filters={
-			"reference_doctype": "Sales Order",
-			"reference_name": order,
+			"reference_doctype": doctype,
+			"reference_name": name,
 			"docstatus": 1,
 			"status": ["in", list(OPEN_STATUSES)],
 		},
@@ -107,7 +140,7 @@ def state_of(order: str, amount=None, gateway_account=None) -> dict | None:
 			filters={"reference_doctype": "Payment Request", "reference_docname": request["name"]},
 			fields=["name", "status", "creation", "output", "integration_request_service as service"],
 		)
-	return classify(requests, frappe.utils.now_datetime(), amount, gateway_account)
+	return classify(requests, frappe.utils.now_datetime(), amount, account, order_window())
 
 
 def page_url(state: dict) -> str:
@@ -121,8 +154,24 @@ def page_url(state: dict) -> str:
 	return frappe.get_doc("Payment Request", state["request"]).get_payment_url()
 
 
-def order_page_url(order: str) -> str:
-	"""The order page with the mark that makes it say that the payment is in process."""
+def order_page_url(doctype: str, name: str) -> str:
+	"""The page of the document with the mark that makes it say that the payment is in process."""
 	from frappe.utils import get_url
 
-	return get_url(f"/orders/{order}?payment=processing")
+	folder = "orders" if doctype == "Sales Order" else "invoices"
+	return get_url(f"/{folder}/{name}?payment=processing")
+
+
+def message(state: dict) -> str:
+	"""The text for a customer whose payment is in progress (the same words as the notice of the page)."""
+	from frappe import _
+
+	if state["state"] == PROCESSING:
+		return _(
+			"Оплата обробляється банком, підтвердження може надійти не одразу. Після підтвердження вам буде надіслано лист. Не оплачуйте повторно."
+		)
+	return (
+		_("Оплата цього замовлення вже розпочата")
+		+ ". "
+		+ _("Ви можете продовжити оплату на тій самій сторінці банку.")
+	)

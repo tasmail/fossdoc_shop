@@ -95,8 +95,15 @@ class TestTemplate(unittest.TestCase):
 		self.assertIn("Продовжити оплату", notice)
 		# in the second state ("processing") there is no way to start or continue a payment
 		self.assertEqual(notice.count("make_payment_request"), 1)
-		self.assertLess(notice.index('pay_state == "processing"'), notice.index("make_payment_request"))
-		self.assertLess(notice.index("make_payment_request"), notice.index("{% endif %}"))
+		self.assertLess(notice.index('pay_state == "processing"'), notice.index("{% else %}"))
+		self.assertGreater(notice.index("make_payment_request"), notice.index("{% else %}"))
+
+	def test_the_links_disable_themselves_on_a_click_and_the_popup_is_shown_once(self):
+		notice = (TEMPLATE.parents[1] / "payment_notice.html").read_text()
+		self.assertIn("classList.add('disabled')", self.text)
+		self.assertIn("classList.add('disabled')", notice)
+		self.assertIn("history.replaceState", notice)
+		self.assertIn('notice.dataset.state !== "processing"', notice)
 
 	def test_the_stock_condition_and_the_grand_total_are_gone_from_the_button(self):
 		self.assertNotIn('doc.doctype != "Sales Invoice"', self.text)

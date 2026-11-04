@@ -153,3 +153,5 @@ QR коди,QR codes
 "Оплата обробляється банком, підтвердження може надійти не одразу. Після підтвердження вам буде надіслано лист. Не оплачуйте повторно.",The bank is processing the payment; the confirmation may not arrive at once. You will get a letter when it is confirmed. Do not pay again.
 Ви можете продовжити оплату на тій самій сторінці банку.,You can continue the payment on the same page of the bank.
 Продовжити оплату,Continue the payment
+"Оплату розпочато щойно. Якщо ви вже оплатили, підтвердження може надійти не одразу, лист буде надіслано, не оплачуйте повторно. Якщо ні, продовжте оплату на тій самій сторінці банку.","The payment has just been started. If you have already paid, the confirmation may not arrive at once and a letter will be sent, do not pay again. If not, continue the payment on the same page of the bank."
+Зачекайте…,Please wait…
