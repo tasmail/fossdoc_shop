@@ -3,6 +3,7 @@
 These tests need no Frappe site (the helper and the template are read as plain Python and text).
 """
 
+import re
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -64,6 +65,15 @@ class TestUnpaidAmount(unittest.TestCase):
 	def test_a_quotation_cannot_be_paid(self):
 		self.assertEqual(unpaid_amount(order(doctype="Quotation")), 0)
 
+	def test_the_rounding_is_half_up_like_flt_of_frappe(self):
+		# round() would give 10.12 and 2.67 (binary floats, banker's rounding); the Payment Request charges 10.13 and 2.68
+		self.assertEqual(unpaid_amount(order(grand_total=10.125)), 10.13)
+		self.assertEqual(unpaid_amount(order(grand_total=10.135)), 10.14)
+		self.assertEqual(unpaid_amount(order(grand_total=2.675)), 2.68)
+
+	def test_a_negative_remainder_is_nothing(self):
+		self.assertEqual(unpaid_amount(order(grand_total=10, advance_paid=10.125)), 0)
+
 	def test_the_precision_of_the_currency_is_kept(self):
 		self.assertEqual(unpaid_amount(order(grand_total=10.126), precision=2), 10.13)
 		self.assertEqual(unpaid_amount(order(grand_total=5), precision=0), 5)
@@ -83,6 +93,21 @@ class TestTemplate(unittest.TestCase):
 
 	def test_the_copy_names_its_stock_file(self):
 		self.assertIn("webshop/webshop/templates/pages/order.html", self.text.split("{% extends", 1)[0])
+
+
+class TestStockTemplate(unittest.TestCase):
+	def test_the_copy_differs_from_the_stock_page_only_in_the_header_and_the_pay_block(self):
+		import importlib.util
+
+		spec = importlib.util.find_spec("webshop")
+		if not spec or not spec.origin:
+			self.skipTest("Webshop is not installed")
+		stock_file = Path(spec.origin).parent / "templates" / "pages" / "order.html"
+		if not stock_file.exists():
+			self.skipTest("Webshop has no such page")
+		pay = re.compile(r"\{% if enabled_checkout and (?:pay_amount|\(doc\.doctype).*?\{% endif %\}", re.DOTALL)
+		copy = TEMPLATE.read_text().split("-#}\n", 1)[1]
+		self.assertEqual(pay.sub("PAY", copy, count=1), pay.sub("PAY", stock_file.read_text(), count=1))
 
 
 if __name__ == "__main__":

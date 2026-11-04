@@ -4,6 +4,8 @@ The page template is the copy of the one of Webshop (see order.html). The stock 
 this module only adds what the Pay button needs: the unpaid remainder.
 """
 
+from decimal import ROUND_HALF_UP, Decimal
+
 # The documents whose unpaid remainder ERPNext computes in get_amount() of the Payment Request.
 ORDERS = ("Sales Order", "Purchase Order")
 INVOICES = ("Sales Invoice", "Purchase Invoice")
@@ -11,6 +13,11 @@ INVOICES = ("Sales Invoice", "Purchase Invoice")
 
 def _number(value):
 	return float(value or 0)
+
+
+def _round_half_up(value, precision):
+	"""The rounding of flt() of Frappe (half up on the decimal text of the number), without importing Frappe."""
+	return float(Decimal(repr(float(value))).quantize(Decimal(1).scaleb(-precision), rounding=ROUND_HALF_UP))
 
 
 def unpaid_amount(doc, precision=2):
@@ -39,7 +46,7 @@ def unpaid_amount(doc, precision=2):
 			amount = amount / rate
 	else:
 		return 0
-	return round(amount, precision) if amount > 0 else 0
+	return _round_half_up(amount, precision) if amount > 0 else 0
 
 
 def get_context(context):
