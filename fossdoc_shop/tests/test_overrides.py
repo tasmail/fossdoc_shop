@@ -233,6 +233,13 @@ class TestMakePaymentRequest(FrappeTestCase):
 		self.assertEqual(done.events[-1], "SELECT RELEASE_LOCK")
 		self.assertEqual(frappe.session.user, "Administrator")  # the session is given back
 
+	def test_nothing_is_committed_after_a_failed_stock_call(self):
+		done = self.run_it(True, None, fail=True, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart")
+
+		self.assertEqual(
+			done.events, ["SELECT GET_LOCK", "commit", "state_of", "stock", "SELECT RELEASE_LOCK"]
+		)
+
 	def test_a_press_that_waits_too_long_is_told_that_the_payment_is_in_process(self):
 		frappe.local.response = frappe._dict()
 
@@ -241,6 +248,18 @@ class TestMakePaymentRequest(FrappeTestCase):
 		self.assertIsNone(done.result)
 		done.original.assert_not_called()
 		self.assertEqual(done.events, ["SELECT GET_LOCK"])  # nothing was read, and nothing is released
+		self.assertTrue(frappe.local.response["location"].endswith("/orders/SAL-1?payment=processing"))
+
+	def test_a_lock_that_the_database_answers_with_null_is_a_timeout_too(self):
+		frappe.local.response = frappe._dict()
+
+		done = self.run_it(
+			True, None, got_lock=None, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart"
+		)
+
+		self.assertIsNone(done.result)
+		done.original.assert_not_called()
+		self.assertEqual(done.events, ["SELECT GET_LOCK"])
 		self.assertTrue(frappe.local.response["location"].endswith("/orders/SAL-1?payment=processing"))
 
 	def test_other_documents_go_to_the_endpoint_of_erpnext_as_they_are(self):

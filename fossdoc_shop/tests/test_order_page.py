@@ -108,6 +108,11 @@ class TestTemplate(unittest.TestCase):
 		self.assertIn("event.persisted", links)
 		self.assertIn("aria-disabled", links)
 		self.assertIn("preventDefault", links)
+		# a click that opens a new tab, and a cancelled navigation, must not leave the link disabled
+		self.assertIn("event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0", links)
+		self.assertIn("setTimeout(restore, 10000)", links)
+		self.assertIn("visibilitychange", links)
+		self.assertIn('document.visibilityState === "visible"', links)
 		self.assertIn("history.replaceState", notice)
 		self.assertIn('notice.dataset.state !== "processing"', notice)
 
