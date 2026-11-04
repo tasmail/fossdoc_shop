@@ -1,6 +1,7 @@
 """Hooks of the app: the e-mail of a calculation and the download of a PDF."""
 
 import email
+import traceback
 from email import policy
 from email.utils import formataddr
 
@@ -135,21 +136,58 @@ class PaymentRequest(_payment_request_class()):
 			frappe.set_user(user)
 
 
+LINK_FUNCTION = "link_portal_users_to_contacts"
+
+
+def _failed_in_link(error):
+	"""True when the conflict was raised by the step that links the contacts of the portal users."""
+	return any(frame.name == LINK_FUNCTION for frame in traceback.extract_tb(error.__traceback__))
+
+
+def link_portal_contacts(customer):
+	"""Link the contacts of the portal users of a customer: the step of ERPNext, run in a background job.
+
+	The job reads the Contact in a transaction of its own, so it sees the change that made the first try fail. A conflict
+	again raises RetryBackgroundJobError (Frappe retries the job, and logs an error only after the last try). The step
+	adds only the links that are missing, so running it twice or for a customer with nothing to do changes nothing.
+	"""
+	from erpnext.controllers.website_list_for_contact import link_portal_users_to_contacts
+
+	if not frappe.db.exists("Customer", customer):
+		return
+	try:
+		link_portal_users_to_contacts(frappe.get_doc("Customer", customer))
+	except frappe.TimestampMismatchError:
+		raise frappe.RetryBackgroundJobError from None
+
+
 class Customer(_customer_class()):
 	"""A Customer whose last step, the link to the contacts of its portal users, never ends the request in an error.
 
-	A new customer who sets the password of the account saw "Document has been modified after you have opened
-	it": the step saves the Contact of the user, and another writer changed that Contact in the same moment, so
-	reading it again does not help (reproduced on staging, the second try failed in the same way). The contact
-	of a new customer is linked to the Customer when the Customer is created, so the step only adds links that
-	are missing; a conflict here is logged and skipped, and the customer goes on.
+	The step (link_portal_users_to_contacts of ERPNext, called by Customer.on_update) opens the Contact of the user
+	and saves it with the link to the Customer. A new customer who signs up has that Contact written at the same
+	moment by the job that User.on_update queues (create_contact), so the save can end in "Document has been modified
+	after you have opened it" (TimestampMismatchError), and reading the Contact again in the same transaction does not
+	help. That is a race, not a failure: the conflict is cleared and the step is queued as a job that runs after the
+	commit (link_portal_contacts). Nothing is logged for it; a job that still conflicts after Frappe's retries logs
+	its own error. A conflict raised by any other step is logged, as before, and the customer goes on.
 	"""
 
 	def on_update(self):
 		try:
 			super().on_update()
-		except frappe.TimestampMismatchError:
+		except frappe.TimestampMismatchError as error:
 			frappe.clear_last_message()
+			if _failed_in_link(error):
+				frappe.enqueue(
+					"fossdoc_shop.overrides.link_portal_contacts",
+					queue="short",
+					customer=self.name,
+					job_id=f"link_portal_contacts::{frappe.local.site}::{self.name}",
+					deduplicate=True,
+					enqueue_after_commit=True,
+				)
+				return
 			frappe.log_error(
 				title="Customer: the contacts of the portal users were not linked",
 				message=frappe.get_traceback(),
