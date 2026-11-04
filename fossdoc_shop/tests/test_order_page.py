@@ -84,8 +84,19 @@ class TestTemplate(unittest.TestCase):
 		self.text = TEMPLATE.read_text()
 
 	def test_the_button_is_shown_for_a_remainder_and_prints_it(self):
-		self.assertIn("{% if enabled_checkout and pay_amount %}", self.text)
+		self.assertIn("{% if enabled_checkout and pay_amount and not pay_state %}", self.text)
 		self.assertIn("{{ pay_amount_formatted }}", self.text)
+
+	def test_a_payment_in_progress_replaces_the_button_with_the_notice(self):
+		self.assertIn("{% elif enabled_checkout and pay_state %}", self.text)
+		self.assertIn("fossdoc_shop/templates/payment_notice.html", self.text)
+		notice = (TEMPLATE.parents[1] / "payment_notice.html").read_text()
+		self.assertIn("Оплата цього замовлення вже розпочата", notice)
+		self.assertIn("Продовжити оплату", notice)
+		# in the second state ("processing") there is no way to start or continue a payment
+		self.assertEqual(notice.count("make_payment_request"), 1)
+		self.assertLess(notice.index('pay_state == "processing"'), notice.index("make_payment_request"))
+		self.assertLess(notice.index("make_payment_request"), notice.index("{% endif %}"))
 
 	def test_the_stock_condition_and_the_grand_total_are_gone_from_the_button(self):
 		self.assertNotIn('doc.doctype != "Sales Invoice"', self.text)

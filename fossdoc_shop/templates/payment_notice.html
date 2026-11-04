@@ -1,0 +1,26 @@
+{#- The notice that takes the place of the Pay button of the order page when the payment of the order is in progress.
+	pay_state is "continue" (an open request: the same payment page) or "processing" (the bank is checking the payment). -#}
+<div class="alert alert-warning small" id="payment-in-progress" data-state="{{ pay_state }}">
+	<strong>{{ _("Оплата цього замовлення вже розпочата") }}</strong>
+	{% if pay_state == "processing" %}
+	<br>{{ _("Оплата обробляється банком, підтвердження може надійти не одразу. Після підтвердження вам буде надіслано лист. Не оплачуйте повторно.") }}
+	{% else %}
+	<br>{{ _("Ви можете продовжити оплату на тій самій сторінці банку.") }}
+	<br>
+	<a href="/api/method/erpnext.accounts.doctype.payment_request.payment_request.make_payment_request?dn={{ doc.name }}&dt={{ doc.doctype }}&submit_doc=1&order_type=Shopping Cart"
+		class="btn btn-primary btn-sm mt-2" id="continue-payment">
+		{{ _("Продовжити оплату") }} {{ pay_amount_formatted }}
+	</a>
+	{% endif %}
+</div>
+{#- After a second press of Pay the shop sends the customer here (?payment=processing): a pop-up says it once more. -#}
+<script>
+	window.addEventListener("load", function () {
+		if (!window.frappe || !frappe.msgprint || new URLSearchParams(window.location.search).get("payment") !== "processing") return;
+		frappe.msgprint({
+			title: {{ _("Оплата цього замовлення вже розпочата")|tojson }},
+			message: {{ _("Оплата обробляється банком, підтвердження може надійти не одразу. Після підтвердження вам буде надіслано лист. Не оплачуйте повторно.")|tojson }},
+			indicator: "orange",
+		});
+	});
+</script>

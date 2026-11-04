@@ -1,7 +1,8 @@
 """Context of the order page (/orders/<name>, /invoices/<name>, /quotations/<name>).
 
 The page template is the copy of the one of Webshop (see order.html). The stock context of Webshop is built first and
-this module only adds what the Pay button needs: the unpaid remainder.
+this module only adds what the Pay button needs: the unpaid remainder and, when the payment of the order is already in
+progress, its state (payment_state.py), which replaces the button with a notice.
 """
 
 from decimal import ROUND_HALF_UP, Decimal
@@ -61,6 +62,12 @@ def get_context(context):
 	context.pay_amount_formatted = (
 		fmt_money(context.pay_amount, currency=doc.currency) if context.pay_amount else ""
 	)
+	# a payment that is in progress is not started again: the button gives way to a notice
+	context.pay_state = None
+	if context.pay_amount and doc.doctype == "Sales Order":
+		from fossdoc_shop import payment_state
+
+		context.pay_state = (payment_state.state_of(doc.name, context.pay_amount) or {}).get("state")
 	# the status of a paid order does not say it ("To Deliver and Bill"); the status of an invoice does
 	context.is_paid = bool(
 		doc.doctype == "Sales Order"

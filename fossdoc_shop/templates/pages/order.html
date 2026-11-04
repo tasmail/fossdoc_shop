@@ -1,5 +1,5 @@
 {#- FossDoc Shop copy of webshop/webshop/templates/pages/order.html (Webshop, branch version-15, commit a355cda).
-	Changed: only the Pay button of header_actions. The stock one is shown for every document but a Sales Invoice
+	Changed: only the Pay button of header_actions (and the notice that takes its place when the payment is in progress). The stock one is shown for every document but a Sales Invoice
 	and prints grand_total; here the context (order.py of this app) gives pay_amount, the unpaid remainder.
 	On a Webshop upgrade diff this file with the stock one. -#}
 {% extends "templates/web.html" %}
@@ -41,11 +41,13 @@
 		<div class="form-column col-sm-6">
 			<div class="page-header-actions-block" data-html-block="header-actions">
 				<p>
-					{% if enabled_checkout and pay_amount %}
+					{% if enabled_checkout and pay_amount and not pay_state %}
 					<a href="/api/method/erpnext.accounts.doctype.payment_request.payment_request.make_payment_request?dn={{ doc.name }}&dt={{ doc.doctype }}&submit_doc=1&order_type=Shopping Cart"
 						class="btn btn-primary btn-sm" id="pay-for-order">
 						{{ _("Pay") }} {{ pay_amount_formatted }}
 					</a>
+					{% elif enabled_checkout and pay_state %}
+					{% include "fossdoc_shop/templates/payment_notice.html" %}
 					{% elif is_paid %}
 					<span class="indicator-pill green" id="order-paid">{{ _("Paid") }}</span>
 					{% endif %}

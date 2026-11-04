@@ -9,7 +9,7 @@ import frappe
 from frappe import _
 from frappe.rate_limiter import rate_limit
 
-from fossdoc_shop import captcha
+from fossdoc_shop import captcha, payment_state
 from fossdoc_shop.branding import brand
 from fossdoc_shop.calculation import MARKER
 from fossdoc_shop.payment import SUBJECT_MARK
@@ -82,6 +82,13 @@ def make_payment_request(**args):
 	so the button ends with Not permitted. For a sales order the call is allowed to the user whose customer owns
 	the order (the rule of the portal pages) and runs as the administrator for the time of the call; for any
 	other document the endpoint of ERPNext is called as it is.
+
+	A payment that is already in progress is never replaced. When the customer presses Pay again, ERPNext cancels
+	the open Payment Request and makes a new one, and a customer who pays on the first page of the gateway has paid
+	for a cancelled request. So, before ERPNext is called, the open requests of the order are looked at
+	(payment_state.py): a payment in the hands of the bank sends the customer back to the order page with a notice
+	and starts nothing, and an open request of the same gateway account and of the amount still owed is not
+	replaced: the customer goes to its payment page again (the same reference).
 	"""
 	from erpnext.accounts.doctype.payment_request import payment_request
 	from erpnext.controllers.website_list_for_contact import has_website_permission
@@ -98,9 +105,34 @@ def make_payment_request(**args):
 	args.setdefault("recipient_id", user)
 	frappe.set_user("Administrator")
 	try:
+		if _payment_in_progress(payment_request, order, args):
+			return None
 		return payment_request.make_payment_request(**args)
 	finally:
 		frappe.set_user(user)
+
+
+def _payment_in_progress(payment_request, order, args) -> bool:
+	"""Send the customer to the payment that is already in progress; False when a new request may be made.
+
+	The answer is a redirect, like the one of ERPNext to the gateway: to the order page, which says that the bank
+	is processing the payment, or to the payment page of the open request.
+	"""
+	if args.get("order_type") != "Shopping Cart" or args.get("loyalty_points"):
+		return False
+	company = args.get("company") or order.company
+	account = payment_request.get_gateway_details(frappe._dict(args, company=company)) or {}
+	amount = payment_request.get_amount(order, account.get("payment_account"))
+	state = payment_state.state_of(order.name, amount, account.get("name"))
+	if not state:
+		return False
+	frappe.local.response["type"] = "redirect"
+	if state["state"] == payment_state.PROCESSING:
+		frappe.local.response["location"] = payment_state.order_page_url(order.name)
+	else:
+		frappe.local.response["location"] = payment_state.page_url(state)
+	frappe.db.commit()  # the page of a new payment of the open request is an Integration Request that stays
+	return True
 
 
 def _customer_class():

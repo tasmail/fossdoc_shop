@@ -83,7 +83,7 @@ class TestDownloadPdf(FrappeTestCase):
 
 
 class TestMakePaymentRequest(FrappeTestCase):
-	def run_it(self, allowed, **args):
+	def run_it(self, allowed, state=None, **args):
 		"""Call the override with the endpoint of ERPNext and the rule of the portal replaced by doubles."""
 		users = []
 		with (
@@ -94,6 +94,9 @@ class TestMakePaymentRequest(FrappeTestCase):
 			patch(
 				"erpnext.accounts.doctype.payment_request.payment_request.make_payment_request"
 			) as original,
+			patch("erpnext.accounts.doctype.payment_request.payment_request.get_gateway_details"),
+			patch("erpnext.accounts.doctype.payment_request.payment_request.get_amount", return_value=45.67),
+			patch("fossdoc_shop.overrides.payment_state.state_of", return_value=state),
 		):
 			original.side_effect = lambda **kw: users.append(frappe.session.user) or "PR"
 			try:
@@ -124,6 +127,43 @@ class TestMakePaymentRequest(FrappeTestCase):
 
 		self.assertEqual(done.result, "refused")
 		done.original.assert_not_called()
+
+	def test_a_payment_in_the_hands_of_the_bank_starts_nothing_and_goes_back_to_the_order_page(self):
+		frappe.local.response = frappe._dict()
+		state = {"state": "processing", "request": "PRQ-1", "irequest": None}
+
+		done = self.run_it(True, state, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart")
+
+		self.assertIsNone(done.result)
+		done.original.assert_not_called()  # ERPNext would cancel the open request
+		self.assertEqual(frappe.local.response["type"], "redirect")
+		self.assertTrue(frappe.local.response["location"].endswith("/orders/SAL-1?payment=processing"))
+
+	def test_an_open_request_is_not_replaced_and_the_customer_goes_to_its_payment_page(self):
+		frappe.local.response = frappe._dict()
+		state = {"state": "continue", "request": "PRQ-1", "irequest": "WFP-1"}
+
+		done = self.run_it(True, state, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart")
+
+		self.assertIsNone(done.result)
+		done.original.assert_not_called()
+		self.assertTrue(frappe.local.response["location"].endswith("/wayforpay_checkout?order=WFP-1"))
+
+	def test_without_a_payment_in_progress_erpnext_makes_the_request(self):
+		done = self.run_it(True, None, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart")
+
+		self.assertEqual(done.result, "PR")
+		done.original.assert_called_once()
+
+	def test_the_check_is_for_the_cart_only_and_not_for_loyalty_points(self):
+		state = {"state": "processing", "request": "PRQ-1", "irequest": None}
+
+		done = self.run_it(
+			True, state, dt="Sales Order", dn="SAL-1", order_type="Shopping Cart", loyalty_points=5
+		)
+
+		self.assertEqual(done.result, "PR")  # the amount differs, the stock rules apply
+		self.assertEqual(self.run_it(True, state, dt="Sales Order", dn="SAL-1").result, "PR")
 
 	def test_other_documents_go_to_the_endpoint_of_erpnext_as_they_are(self):
 		done = self.run_it(False, dt="Sales Invoice", dn="SINV-1")
