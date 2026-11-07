@@ -52,9 +52,9 @@ override_doctype_class = {
 }
 
 # The Download PDF button of the print page sends the word None and the Pay button of an order is refused to a
-# customer: see overrides.download_pdf and overrides.make_payment_request.
+# customer: see overrides.download_pdf and overrides.make_payment_request. The contact form is not overridden: frappe_guard
+# checks it (the shop checks only its own forms: the calculation and the demo download).
 override_whitelisted_methods = {
-	"frappe.www.contact.send_message": "fossdoc_shop.overrides.send_message",
 	"frappe.utils.print_format.download_pdf": "fossdoc_shop.overrides.download_pdf",
 	"erpnext.accounts.doctype.payment_request.payment_request.make_payment_request": (
 		"fossdoc_shop.overrides.make_payment_request"
