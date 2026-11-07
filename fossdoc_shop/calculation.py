@@ -1,7 +1,7 @@
 """The calculation that the calculator of the site sends by e-mail.
 
-The page sends the contact form (`frappe.www.contact.send_message`); the message is the marker line followed
-by one line of JSON (the lines in words for the manager follow it). Frappe turns the message into a Communication and the Notification of this app mails it.
+The page sends the calculation to `fossdoc_shop.api.send_calculation`; the message is the marker line followed
+by one line of JSON (the lines in words for the manager follow it). The endpoint stores a Communication and the Notification of this app mails it.
 The text comes from a guest, so everything is validated and limited here before a template shows it.
 """
 

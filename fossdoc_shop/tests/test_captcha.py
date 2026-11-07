@@ -69,15 +69,18 @@ class TestCaptcha(FrappeTestCase):
 	def test_every_public_form_is_refused_without_a_token_once_the_keys_are_set(self):
 		from fossdoc_shop.api import send_calculation
 		from fossdoc_shop.downloads import request_download
-		from fossdoc_shop.overrides import send_message
 		from fossdoc_shop.tests.test_api import calculation
 
 		with self.assertRaises(frappe.ValidationError):
 			send_calculation("client@example.org", calculation())
 		with self.assertRaises(frappe.ValidationError):
 			request_download("Name Surname", "client@example.org", organization="Org")
-		with self.assertRaises(frappe.ValidationError):
-			send_message("client@example.org", "Hello")
+
+	def test_the_contact_form_is_not_overridden_by_the_shop(self):
+		from fossdoc_shop import hooks, overrides
+
+		self.assertNotIn("frappe.www.contact.send_message", hooks.override_whitelisted_methods)
+		self.assertFalse(hasattr(overrides, "send_message"))
 
 	def test_a_filled_honeypot_is_answered_without_asking_google(self):
 		from fossdoc_shop.downloads import request_download
